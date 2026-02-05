@@ -1,0 +1,1565 @@
+Junkie.service = "Premium"
+Junkie.identifier = "1005130"
+Junkie.provider = "Key"
+
+local result = (function()
+    getgenv().UI_CLOSED = false
+    local Players = game:GetService("Players")
+    local TweenService = game:GetService("TweenService")
+    local UserInputService = game:GetService("UserInputService")
+    local Lighting = game:GetService("Lighting")
+    local Colors = {
+        background = Color3.fromRGB(13, 17, 23),
+        surface = Color3.fromRGB(22, 27, 34),
+        surfaceLight = Color3.fromRGB(30, 36, 44),
+        primary = Color3.fromRGB(88, 166, 255),
+        primaryDark = Color3.fromRGB(58, 136, 225),
+        primaryGlow = Color3.fromRGB(120, 180, 255),
+        accent = Color3.fromRGB(136, 87, 224),
+        success = Color3.fromRGB(47, 183, 117),
+        successDark = Color3.fromRGB(37, 153, 97),
+        successGlow = Color3.fromRGB(67, 203, 137),
+        error = Color3.fromRGB(248, 81, 73),
+        textPrimary = Color3.fromRGB(230, 237, 243),
+        textSecondary = Color3.fromRGB(139, 148, 158),
+        textMuted = Color3.fromRGB(110, 118, 129),
+        border = Color3.fromRGB(48, 54, 61),
+        borderLight = Color3.fromRGB(63, 71, 79),
+        glass = Color3.fromRGB(255, 255, 255),
+        neonBlue = Color3.fromRGB(0, 229, 255),
+        neonPurple = Color3.fromRGB(187, 134, 252)
+    }
+    
+    local function hasFileSystemSupport()
+        local hasWritefile = pcall(function() return type(writefile) == "function" end)
+        local hasReadfile = pcall(function() return type(readfile) == "function" end)
+        local hasIsfile = pcall(function() return type(isfile) == "function" end)
+        return hasWritefile and hasReadfile and hasIsfile
+    end
+    
+    local fileSystemSupported = hasFileSystemSupport()
+    
+    local function saveVerifiedKey(key)
+        if not fileSystemSupported then return false end
+        local ok = pcall(function()
+            writefile("verified_key.txt", key)
+        end)
+        return ok
+    end
+    
+    local function loadVerifiedKey()
+        if not fileSystemSupported then 
+            return nil 
+        end
+        
+        local ok, content = pcall(function()
+            return readfile("verified_key.txt")
+        end)
+        
+        if not ok or not content then 
+            return nil 
+        end
+        return content
+    end
+    
+    local function clearSavedKey()
+        if not fileSystemSupported then return false end
+        local ok = pcall(function() delfile("verified_key.txt") end)
+        return ok
+    end
+    
+
+    local function loadUIFactory()
+        return function(Colors, Players, TweenService, UserInputService, Lighting)
+        local IconAssets = {
+            shield = 84528813312016,
+            x = 73070135088117,
+            key = 128426502701541,
+            link = 73034596791310,
+            check = 83827110621355
+        }
+        
+        local function createIconImage(name, size, color)
+            local id = IconAssets[name]
+            if id then
+                local img = Instance.new("ImageLabel")
+                img.BackgroundTransparency = 1
+                img.Size = UDim2.new(0, size or 18, 0, size or 18)
+                img.Image = "rbxassetid://" .. tostring(id)
+                img.ImageColor3 = color or Color3.fromRGB(255, 255, 255)
+                img.ScaleType = Enum.ScaleType.Fit
+                if img:IsA("ImageLabel") and img.ResampleMode ~= nil then
+                    img.ResampleMode = Enum.ResamplerMode.Default
+                end
+                return img
+            end
+
+            local lbl = Instance.new("TextLabel")
+            lbl.BackgroundTransparency = 1
+            lbl.Size = UDim2.new(0, size or 18, 0, size or 18)
+            lbl.TextScaled = true
+            lbl.Font = Enum.Font.SourceSansBold
+            lbl.TextColor3 = color or Color3.fromRGB(255, 255, 255)
+            lbl.Text = ({ shield = "🛡️", key = "🔑", link = "🔗", x = "✕", check = "✓" })[name] or "🔘"
+            return lbl
+        end
+        return function(self)
+            if self.gui then
+                self.gui:Destroy()
+            end
+            
+            self.gui = Instance.new("ScreenGui")
+            self.gui.Name = "JunkieKeySystemUI"
+            self.gui.ResetOnSpawn = false
+            self.gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+            self.gui.IgnoreGuiInset = true
+            
+            local backdrop = Instance.new("Frame")
+            backdrop.Name = "Backdrop"
+            backdrop.Size = UDim2.new(1, 0, 1, 0)
+            backdrop.Position = UDim2.new(0, 0, 0, 0)
+            backdrop.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+            backdrop.BackgroundTransparency = 0.4
+            backdrop.BorderSizePixel = 0
+            backdrop.Parent = self.gui
+            
+            local blur = Instance.new("BlurEffect")
+            blur.Size = 16
+            blur.Name = "JunkieUIBlur"
+            blur.Parent = Lighting
+            
+            local container = Instance.new("Frame")
+            container.Name = "Container"
+            
+            local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+            local viewportSize = workspace.CurrentCamera.ViewportSize
+            
+            if isMobile then
+                container.Size = UDim2.new(0.6, 0, 0, math.min(320, viewportSize.Y * 0.8))
+                container.Position = UDim2.new(0.5, 0, 0.5, 0)
+                container.AnchorPoint = Vector2.new(0.5, 0.5)
+            else
+                container.Size = UDim2.new(0, 580, 0, 320)
+                container.Position = UDim2.new(0.5, 0, 0.5, 0)
+                container.AnchorPoint = Vector2.new(0.5, 0.5)
+            end
+            
+            container.BackgroundColor3 = Colors.surface
+            container.BorderSizePixel = 0
+            container.Parent = backdrop
+            
+            container:SetAttribute("IsMobile", isMobile)
+            
+            local containerCorner = Instance.new("UICorner")
+            containerCorner.CornerRadius = UDim.new(0, 14)
+            containerCorner.Parent = container
+            
+            local containerStroke = Instance.new("UIStroke")
+            containerStroke.Color = Colors.border
+            containerStroke.Thickness = 1
+            containerStroke.Transparency = 0.3
+            containerStroke.Parent = container
+            
+            local shadow = Instance.new("Frame")
+            shadow.Name = "Shadow"
+            shadow.Size = UDim2.new(1, 40, 1, 40)
+            shadow.Position = UDim2.new(0.5, 0, 0.5, 6)
+            shadow.AnchorPoint = Vector2.new(0.5, 0.5)
+            shadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+            shadow.BackgroundTransparency = 0.7
+            shadow.BorderSizePixel = 0
+            shadow.ZIndex = 0
+            shadow.Parent = backdrop
+            
+            local shadowCorner = Instance.new("UICorner")
+            shadowCorner.CornerRadius = UDim.new(0, 18)
+            shadowCorner.Parent = shadow
+            
+            local glowFrame = Instance.new("Frame")
+            glowFrame.Name = "GlowEffect"
+            glowFrame.Size = UDim2.new(1, 60, 1, 60)
+            glowFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+            glowFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+            glowFrame.BackgroundColor3 = Colors.primary
+            glowFrame.BackgroundTransparency = 0.95
+            glowFrame.BorderSizePixel = 0
+            glowFrame.ZIndex = -1
+            glowFrame.Parent = backdrop
+            
+            local glowCorner = Instance.new("UICorner")
+            glowCorner.CornerRadius = UDim.new(0, 30)
+            glowCorner.Parent = glowFrame
+
+            local glowTween = TweenService:Create(glowFrame,
+                TweenInfo.new(4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+                {BackgroundTransparency = 0.9, Size = UDim2.new(1, 80, 1, 80)}
+            )
+            glowTween:Play()
+            
+            local glassOverlay = Instance.new("Frame")
+            glassOverlay.Name = "GlassOverlay"
+            glassOverlay.Size = UDim2.new(1, 0, 1, 0)
+            glassOverlay.Position = UDim2.new(0, 0, 0, 0)
+            glassOverlay.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            glassOverlay.BackgroundTransparency = 0.98
+            glassOverlay.BorderSizePixel = 0
+            glassOverlay.ZIndex = 1
+            glassOverlay.Parent = container
+            
+            local glassCorner = Instance.new("UICorner")
+            glassCorner.CornerRadius = UDim.new(0, 14)
+            glassCorner.Parent = glassOverlay
+            
+            local glassGradient = Instance.new("UIGradient")
+            glassGradient.Color = ColorSequence.new{
+                ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+                ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
+                ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 200, 200))
+            }
+            glassGradient.Rotation = 45
+            glassGradient.Transparency = NumberSequence.new{
+                NumberSequenceKeypoint.new(0, 0.96),
+                NumberSequenceKeypoint.new(0.5, 0.98),
+                NumberSequenceKeypoint.new(1, 1)
+            }
+            glassGradient.Parent = glassOverlay
+            
+            local topBar = Instance.new("Frame")
+            topBar.Name = "TopBar"
+            topBar.Size = UDim2.new(1, 0, 0, 45)
+            topBar.Position = UDim2.new(0, 0, 0, 0)
+            topBar.BackgroundColor3 = Colors.background
+            topBar.BorderSizePixel = 0
+            topBar.ZIndex = 10
+            topBar.Parent = container
+            
+            local topBarCorner = Instance.new("UICorner")
+            topBarCorner.CornerRadius = UDim.new(0, 14)
+            topBarCorner.Parent = topBar
+
+            local topBarFix = Instance.new("Frame")
+            topBarFix.Size = UDim2.new(1, 0, 0, 10)
+            topBarFix.Position = UDim2.new(0, 0, 1, -10)
+            topBarFix.BackgroundColor3 = Colors.background
+            topBarFix.BorderSizePixel = 0
+            topBarFix.Parent = topBar
+            
+            local brandLogo = Instance.new("Frame")
+            brandLogo.Name = "BrandLogo"
+            brandLogo.Size = UDim2.new(0, 200, 1, 0)
+            brandLogo.Position = UDim2.new(0, 20, 0, 0)
+            brandLogo.BackgroundTransparency = 1
+            brandLogo.ZIndex = 11
+            brandLogo.Parent = topBar
+
+            local brandLogoIcon = createIconImage("shield", 20, Colors.primary)
+            brandLogoIcon.AnchorPoint = Vector2.new(0, 0.5)
+            brandLogoIcon.Position = UDim2.new(0, 0, 0.5, 0)
+            brandLogoIcon.ZIndex = 11
+            brandLogoIcon.Parent = brandLogo
+
+            local brandLogoText = Instance.new("TextLabel")
+            brandLogoText.BackgroundTransparency = 1
+            brandLogoText.Size = UDim2.new(1, -30, 1, 0)
+            brandLogoText.Position = UDim2.new(0, 28, 0, 0)
+            brandLogoText.Text = "Junkie Key System"
+            brandLogoText.TextColor3 = Colors.textPrimary
+            brandLogoText.TextSize = 15
+            brandLogoText.TextXAlignment = Enum.TextXAlignment.Left
+            brandLogoText.Font = Enum.Font.GothamSemibold
+            brandLogoText.ZIndex = 11
+            brandLogoText.Parent = brandLogo
+            
+            local closeButton = Instance.new("TextButton")
+            closeButton.Name = "CloseButton"
+            closeButton.Size = UDim2.new(0, 30, 0, 30)
+            closeButton.Position = UDim2.new(1, -40, 0.5, 0)
+            closeButton.AnchorPoint = Vector2.new(0, 0.5)
+            closeButton.BackgroundColor3 = Colors.error
+            closeButton.BackgroundTransparency = 0.8
+            closeButton.BorderSizePixel = 0
+            closeButton.Text = ""
+            closeButton.AutoButtonColor = false
+            closeButton.ZIndex = 11
+            closeButton.Parent = topBar
+            
+            local closeCorner = Instance.new("UICorner")
+            closeCorner.CornerRadius = UDim.new(0, 8)
+            closeCorner.Parent = closeButton
+
+            local closeIcon = createIconImage("x", 16, Colors.textPrimary)
+            closeIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+            closeIcon.Position = UDim2.new(0.5, 0, 0.5, 0)
+            closeIcon.ZIndex = 12
+            closeIcon.Parent = closeButton
+            
+
+            local contentArea = Instance.new("Frame")
+            contentArea.Name = "ContentArea"
+            contentArea.Size = UDim2.new(1, -40, 1, -65)
+            contentArea.Position = UDim2.new(0, 20, 0, 55)
+            contentArea.BackgroundTransparency = 1
+            contentArea.Parent = container
+            
+            local titleSection = Instance.new("Frame")
+            titleSection.Name = "TitleSection"
+            titleSection.Size = UDim2.new(1, 0, 0, 85)
+            titleSection.Position = UDim2.new(0, 0, 0, 5)
+            titleSection.BackgroundTransparency = 1
+            titleSection.Parent = contentArea
+            
+
+            local iconFrame = Instance.new("Frame")
+            iconFrame.Name = "IconFrame"
+            iconFrame.Size = UDim2.new(0, 52, 0, 52)
+            iconFrame.Position = UDim2.new(0.5, -26, 0, 0)
+            iconFrame.BackgroundColor3 = Colors.surfaceLight
+            iconFrame.BorderSizePixel = 0
+            iconFrame.Parent = titleSection
+            
+            local iconCorner = Instance.new("UICorner")
+            iconCorner.CornerRadius = UDim.new(0, 12)
+            iconCorner.Parent = iconFrame
+  
+            local iconGradient = Instance.new("UIGradient")
+            iconGradient.Color = ColorSequence.new{
+                ColorSequenceKeypoint.new(0, Colors.primary),
+                ColorSequenceKeypoint.new(0.5, Colors.primaryGlow),
+                ColorSequenceKeypoint.new(1, Colors.accent)
+            }
+            iconGradient.Rotation = 45
+            iconGradient.Parent = iconFrame
+            
+            local iconStroke = Instance.new("UIStroke")
+            iconStroke.Color = Colors.primary
+            iconStroke.Thickness = 2
+            iconStroke.Transparency = 0.5
+            iconStroke.Parent = iconFrame
+            
+            local strokeGradient = Instance.new("UIGradient")
+            strokeGradient.Color = ColorSequence.new{
+                ColorSequenceKeypoint.new(0, Colors.neonBlue),
+                ColorSequenceKeypoint.new(0.5, Colors.primary),
+                ColorSequenceKeypoint.new(1, Colors.neonPurple)
+            }
+            strokeGradient.Rotation = 0
+            strokeGradient.Parent = iconStroke
+            
+        
+            local strokeTween = TweenService:Create(strokeGradient,
+                TweenInfo.new(3, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
+                {Rotation = 360}
+            )
+            strokeTween:Play()
+            
+            local mainIcon = createIconImage("shield", 26, Color3.fromRGB(255, 255, 255))
+            mainIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+            mainIcon.Position = UDim2.new(0.5, 0, 0.5, 0)
+            mainIcon.Parent = iconFrame
+        
+            
+            local titleText = Instance.new("TextLabel")
+            titleText.Name = "TitleText"
+            titleText.Size = UDim2.new(1, 0, 0, 24)
+            titleText.Position = UDim2.new(0, 0, 0, 58)
+            titleText.BackgroundTransparency = 1
+            titleText.Text = self.title
+            titleText.TextColor3 = Colors.textPrimary
+            titleText.TextSize = 17
+            titleText.TextXAlignment = Enum.TextXAlignment.Center
+            titleText.Font = Enum.Font.GothamBold
+            titleText.Parent = titleSection
+            
+            local subtitleText = Instance.new("TextLabel")
+            subtitleText.Name = "SubtitleText"
+            subtitleText.Size = UDim2.new(1, 0, 0, 18)
+            subtitleText.Position = UDim2.new(0, 0, 0, 82)
+            subtitleText.BackgroundTransparency = 1
+            subtitleText.Text = self.subtitle
+            subtitleText.TextColor3 = Colors.textSecondary
+            subtitleText.TextSize = 13
+            subtitleText.TextXAlignment = Enum.TextXAlignment.Center
+            subtitleText.Font = Enum.Font.Gotham
+            subtitleText.Parent = titleSection
+            
+            local inputSection = Instance.new("Frame")
+            inputSection.Name = "InputSection"
+            inputSection.Size = UDim2.new(1, 0, 0, 46)
+            inputSection.Position = UDim2.new(0, 0, 0, 115)
+            inputSection.BackgroundColor3 = Colors.surfaceLight
+            inputSection.BorderSizePixel = 0
+            inputSection.Parent = contentArea
+            
+            local inputCorner = Instance.new("UICorner")
+            inputCorner.CornerRadius = UDim.new(0, 10)
+            inputCorner.Parent = inputSection
+            
+            local inputStroke = Instance.new("UIStroke")
+            inputStroke.Color = Colors.border
+            inputStroke.Thickness = 1
+            inputStroke.Transparency = 0.5
+            inputStroke.Parent = inputSection
+            
+
+            local keyIcon = createIconImage("key", 18, Colors.primary)
+            keyIcon.AnchorPoint = Vector2.new(0, 0.5)
+            keyIcon.Position = UDim2.new(0, 14, 0.5, 0)
+            keyIcon.Parent = inputSection
+            
+            local keyInput = Instance.new("TextBox")
+            keyInput.Name = "KeyInput"
+            keyInput.Size = UDim2.new(1, -50, 1, 0)
+            keyInput.Position = UDim2.new(0, 40, 0, 0)
+            keyInput.BackgroundTransparency = 1
+            keyInput.PlaceholderText = "Enter your verification key"
+            keyInput.PlaceholderColor3 = Colors.textMuted
+            keyInput.Text = ""
+            keyInput.TextColor3 = Colors.textPrimary
+            keyInput.TextSize = 14
+            keyInput.TextXAlignment = Enum.TextXAlignment.Left
+            keyInput.TextTruncate = Enum.TextTruncate.AtEnd
+            keyInput.Font = Enum.Font.Gotham
+            keyInput.ClearTextOnFocus = false
+            keyInput.Parent = inputSection
+            
+            local buttonSection = Instance.new("Frame")
+            buttonSection.Name = "ButtonSection"
+            buttonSection.Size = UDim2.new(1, 0, 0, 40)
+            buttonSection.Position = UDim2.new(0, 0, 0, 175)
+            buttonSection.BackgroundTransparency = 1
+            buttonSection.Parent = contentArea
+            
+            local getLinkButton = Instance.new("TextButton")
+            getLinkButton.Name = "GetLinkButton"
+            getLinkButton.Size = UDim2.new(0.48, 0, 1, 0)
+            getLinkButton.Position = UDim2.new(0, 0, 0, 0)
+            getLinkButton.BackgroundColor3 = Colors.primary
+            getLinkButton.Text = ""  
+            getLinkButton.Font = Enum.Font.GothamSemibold
+            getLinkButton.TextSize = 14
+            getLinkButton.BorderSizePixel = 0
+            getLinkButton.AutoButtonColor = false
+            getLinkButton.Parent = buttonSection
+
+            local getLinkCorner = Instance.new("UICorner")
+            getLinkCorner.CornerRadius = UDim.new(0, 10)
+            getLinkCorner.Parent = getLinkButton
+
+            local getLinkGradient = Instance.new("UIGradient")
+            getLinkGradient.Color = ColorSequence.new{
+                ColorSequenceKeypoint.new(0, Colors.primary),
+                ColorSequenceKeypoint.new(1, Colors.primaryDark)
+            }
+            getLinkGradient.Rotation = 90
+            getLinkGradient.Parent = getLinkButton
+
+            local getLinkGlow = Instance.new("UIStroke")
+            getLinkGlow.Color = Colors.primaryGlow
+            getLinkGlow.Thickness = 0
+            getLinkGlow.Transparency = 0.8
+            getLinkGlow.Parent = getLinkButton
+
+            local getLinkIcon = createIconImage("link", 16, Color3.fromRGB(255, 255, 255))
+            getLinkIcon.AnchorPoint = Vector2.new(0, 0.5)
+            getLinkIcon.Position = UDim2.new(0, 12, 0.5, 0)
+            getLinkIcon.Parent = getLinkButton
+
+            local getLinkText = Instance.new("TextLabel")
+            getLinkText.Name = "ButtonText"
+            getLinkText.Size = UDim2.new(1, 0, 1, 0)  
+            getLinkText.Position = UDim2.new(0, 0, 0, 0)
+            getLinkText.BackgroundTransparency = 1
+            getLinkText.Text = "Get Link"
+            getLinkText.TextColor3 = Color3.fromRGB(255, 255, 255)  
+            getLinkText.Font = Enum.Font.GothamSemibold
+            getLinkText.TextSize = 14  
+            getLinkText.TextXAlignment = Enum.TextXAlignment.Center  
+            getLinkText.Parent = getLinkButton
+
+            local verifyButton = Instance.new("TextButton")
+            verifyButton.Name = "VerifyButton"
+            verifyButton.Size = UDim2.new(0.48, 0, 1, 0)
+            verifyButton.Position = UDim2.new(0.52, 0, 0, 0)
+            verifyButton.BackgroundColor3 = Colors.success
+            verifyButton.BorderSizePixel = 0
+            verifyButton.Text = ""  
+            verifyButton.TextSize = 14
+            verifyButton.Font = Enum.Font.GothamSemibold
+            verifyButton.AutoButtonColor = false
+            verifyButton.Parent = buttonSection
+
+            local verifyCorner = Instance.new("UICorner")
+            verifyCorner.CornerRadius = UDim.new(0, 10)
+            verifyCorner.Parent = verifyButton
+
+            local verifyGradient = Instance.new("UIGradient")
+            verifyGradient.Color = ColorSequence.new{
+                ColorSequenceKeypoint.new(0, Colors.success),
+                ColorSequenceKeypoint.new(1, Colors.successDark)
+            }
+            verifyGradient.Rotation = 90
+            verifyGradient.Parent = verifyButton
+
+            local verifyGlow = Instance.new("UIStroke")
+            verifyGlow.Color = Colors.successGlow
+            verifyGlow.Thickness = 0
+            verifyGlow.Transparency = 0.8
+            verifyGlow.Parent = verifyButton
+
+            local verifyIcon = createIconImage("check", 16, Color3.fromRGB(255, 255, 255))
+            verifyIcon.AnchorPoint = Vector2.new(0, 0.5)
+            verifyIcon.Position = UDim2.new(0, 12, 0.5, 0)
+            verifyIcon.Parent = verifyButton
+
+            local verifyText = Instance.new("TextLabel")
+            verifyText.Name = "ButtonText"
+            verifyText.Size = UDim2.new(1, 0, 1, 0)  
+            verifyText.Position = UDim2.new(0, 0, 0, 0)
+            verifyText.BackgroundTransparency = 1
+            verifyText.Text = "Verify Key"
+            verifyText.TextColor3 = Color3.fromRGB(255, 255, 255)  
+            verifyText.Font = Enum.Font.GothamSemibold
+            verifyText.TextSize = 14  
+            verifyText.TextXAlignment = Enum.TextXAlignment.Center  
+            verifyText.Parent = verifyButton
+            
+        
+            local statusBar = Instance.new("Frame")
+            statusBar.Name = "StatusBar"
+            statusBar.Size = UDim2.new(1, -40, 0, 2)
+            statusBar.Position = UDim2.new(0.5, 0, 1, -14)
+            statusBar.AnchorPoint = Vector2.new(0.5, 0)
+            statusBar.BackgroundColor3 = Colors.border
+            statusBar.BorderSizePixel = 0
+            statusBar.Parent = container
+
+            local statusText = Instance.new("TextLabel")
+            statusText.Name = "StatusText"
+            statusText.BackgroundTransparency = 1
+            statusText.Text = ""
+            statusText.TextColor3 = Colors.textSecondary
+            statusText.Font = Enum.Font.Gotham
+            statusText.TextSize = 12
+            statusText.TextXAlignment = Enum.TextXAlignment.Center
+            statusText.Size = UDim2.new(1, -40, 0, 20)
+            statusText.Position = UDim2.new(0.5, 0, 1, -38)
+            statusText.AnchorPoint = Vector2.new(0.5, 0)
+            statusText.Visible = false
+            statusText.Parent = container
+            
+
+            self.elements = {
+                backdrop = backdrop,
+                container = container,
+                iconFrame = iconFrame,
+                brandLogo = brandLogo,
+                title = titleText,
+                subtitle = subtitleText,
+                getLinkButton = getLinkButton,
+                inputContainer = inputSection,
+                inputFrame = inputSection,
+                keyInput = keyInput,
+                verifyButton = verifyButton,
+                statusBar = statusBar,
+                statusText = statusText,
+                inputStroke = inputStroke,
+                closeButton = closeButton,
+                glassOverlay = glassOverlay,
+                glowFrame = glowFrame
+            }
+            
+            local function createAmbientParticle()
+                local particle = Instance.new("Frame")
+                particle.Name = "AmbientParticle"
+                particle.Size = UDim2.new(0, math.random(2, 4), 0, math.random(2, 4))
+                particle.Position = UDim2.new(math.random(), 0, 1, 0)
+                particle.BackgroundColor3 = Colors.primaryGlow
+                particle.BackgroundTransparency = 0.7
+                particle.BorderSizePixel = 0
+                particle.Parent = container
+                
+                local particleCorner = Instance.new("UICorner")
+                particleCorner.CornerRadius = UDim.new(1, 0)
+                particleCorner.Parent = particle
+                
+                local floatTween = TweenService:Create(particle,
+                    TweenInfo.new(math.random(8, 12), Enum.EasingStyle.Linear),
+                    {
+                        Position = UDim2.new(particle.Position.X.Scale, 0, -0.1, 0),
+                        BackgroundTransparency = 1
+                    }
+                )
+                floatTween:Play()
+                
+                floatTween.Completed:Connect(function()
+                    particle:Destroy()
+                end)
+            end
+            
+            task.spawn(function()
+                while container and container.Parent do
+                    createAmbientParticle()
+                    task.wait(math.random(2, 4))
+                end
+            end)
+            
+            local getLinkStroke = getLinkButton:FindFirstChild("UIStroke")
+            if getLinkStroke then
+                getLinkStroke.Name = "GetLinkButtonGlow"
+            end
+            local verifyStroke = verifyButton:FindFirstChild("UIStroke")
+            if verifyStroke then
+                verifyStroke.Name = "VerifyButtonGlow"
+            end
+
+            local function setupAnimations()
+                local elements = self.elements
+                
+                if elements.closeButton then
+                    elements.closeButton.MouseEnter:Connect(function()
+                        TweenService:Create(elements.closeButton, TweenInfo.new(0.2), {
+                            BackgroundTransparency = 0.2
+                        }):Play()
+                    end)
+                    
+                    elements.closeButton.MouseLeave:Connect(function()
+                        TweenService:Create(elements.closeButton, TweenInfo.new(0.2), {
+                            BackgroundTransparency = 0.8
+                        }):Play()
+                    end)
+                end
+                
+                if elements.getLinkButton then
+                    elements.getLinkButton.MouseEnter:Connect(function()
+                        TweenService:Create(elements.getLinkButton, TweenInfo.new(0.2), {
+                            BackgroundColor3 = Colors.primaryGlow,
+                            Size = UDim2.new(0.48, 2, 1, 2),
+                            Position = UDim2.new(0, -1, 0, -1)
+                        }):Play()
+                        
+                        local glow = elements.getLinkButton:FindFirstChild("GetLinkButtonGlow")
+                        if glow then
+                            TweenService:Create(glow, TweenInfo.new(0.2), {
+                                Thickness = 2,
+                                Transparency = 0.3
+                            }):Play()
+                        end
+                    end)
+                    
+                    elements.getLinkButton.MouseLeave:Connect(function()
+                        TweenService:Create(elements.getLinkButton, TweenInfo.new(0.2), {
+                            BackgroundColor3 = Colors.primary,
+                            Size = UDim2.new(0.48, 0, 1, 0),
+                            Position = UDim2.new(0, 0, 0, 0)
+                        }):Play()
+                        
+                        local glow = elements.getLinkButton:FindFirstChild("GetLinkButtonGlow")
+                        if glow then
+                            TweenService:Create(glow, TweenInfo.new(0.2), {
+                                Thickness = 0,
+                                Transparency = 0.8
+                            }):Play()
+                        end
+                    end)
+                    
+                    elements.getLinkButton.MouseButton1Down:Connect(function()
+                        TweenService:Create(elements.getLinkButton, TweenInfo.new(0.1, Enum.EasingStyle.Back), {
+                            Size = UDim2.new(0.47, 0, 0.95, 0),
+                            Position = UDim2.new(0.005, 0, 0.025, 0)
+                        }):Play()
+                    end)
+                    
+                    elements.getLinkButton.MouseButton1Up:Connect(function()
+                        TweenService:Create(elements.getLinkButton, TweenInfo.new(0.1, Enum.EasingStyle.Back), {
+                            Size = UDim2.new(0.48, 0, 1, 0),
+                            Position = UDim2.new(0, 0, 0, 0)
+                        }):Play()
+                    end)
+                end
+                
+                if elements.verifyButton then
+                    elements.verifyButton.MouseEnter:Connect(function()
+                        TweenService:Create(elements.verifyButton, TweenInfo.new(0.2), {
+                            BackgroundColor3 = Colors.successGlow,
+                            Size = UDim2.new(0.48, 2, 1, 2),
+                            Position = UDim2.new(0.52, -1, 0, -1)
+                        }):Play()
+                        
+                        local glow = elements.verifyButton:FindFirstChild("VerifyButtonGlow")
+                        if glow then
+                            TweenService:Create(glow, TweenInfo.new(0.2), {
+                                Thickness = 2,
+                                Transparency = 0.3
+                            }):Play()
+                        end
+                    end)
+                    
+                    elements.verifyButton.MouseLeave:Connect(function()
+                        TweenService:Create(elements.verifyButton, TweenInfo.new(0.2), {
+                            BackgroundColor3 = Colors.success,
+                            Size = UDim2.new(0.48, 0, 1, 0),
+                            Position = UDim2.new(0.52, 0, 0, 0)
+                        }):Play()
+                        
+                        local glow = elements.verifyButton:FindFirstChild("VerifyButtonGlow")
+                        if glow then
+                            TweenService:Create(glow, TweenInfo.new(0.2), {
+                                Thickness = 0,
+                                Transparency = 0.8
+                            }):Play()
+                        end
+                    end)
+                    
+                    elements.verifyButton.MouseButton1Down:Connect(function()
+                        TweenService:Create(elements.verifyButton, TweenInfo.new(0.1, Enum.EasingStyle.Back), {
+                            Size = UDim2.new(0.47, 0, 0.95, 0),
+                            Position = UDim2.new(0.525, 0, 0.025, 0)
+                        }):Play()
+                    end)
+                    
+                    elements.verifyButton.MouseButton1Up:Connect(function()
+                        TweenService:Create(elements.verifyButton, TweenInfo.new(0.1, Enum.EasingStyle.Back), {
+                            Size = UDim2.new(0.48, 0, 1, 0),
+                            Position = UDim2.new(0.52, 0, 0, 0)
+                        }):Play()
+                    end)
+                end
+                
+                if elements.keyInput and elements.inputStroke then
+                    elements.keyInput.Focused:Connect(function()
+                        TweenService:Create(elements.inputStroke, TweenInfo.new(0.2), {
+                            Color = Colors.primary,
+                            Thickness = 2,
+                            Transparency = 0
+                        }):Play()
+                    end)
+                    
+                    elements.keyInput.FocusLost:Connect(function()
+                        TweenService:Create(elements.inputStroke, TweenInfo.new(0.2), {
+                            Color = Colors.border,
+                            Thickness = 1,
+                            Transparency = 0.5
+                        }):Play()
+                    end)
+                end
+            end
+            
+            local function animateEntrance()
+                local container = self.elements.container
+                local backdrop = self.elements.backdrop
+                
+                if container then
+                    container.BackgroundTransparency = 1
+                    TweenService:Create(container, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
+                        BackgroundTransparency = 0
+                    }):Play()
+                end
+                
+                if backdrop then
+                    backdrop.BackgroundTransparency = 1
+                    TweenService:Create(backdrop, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
+                        BackgroundTransparency = 0.4
+                    }):Play()
+                end
+            end
+            
+            self.gui.Parent = game:GetService("CoreGui")
+            
+            self.gui.AncestryChanged:Connect(function(_, parent)
+                if parent == nil then
+                    local blur = Lighting:FindFirstChild("JunkieUIBlur")
+                    if blur then blur:Destroy() end
+                end
+            end)
+            
+    
+            self.showSuccess = function(self, message)
+                if not self.elements then return end
+                
+                local container = self.elements.container
+                local loadingOverlay = container:FindFirstChild("LoadingOverlay")
+                
+                if loadingOverlay then
+                    local mainContainer = loadingOverlay:FindFirstChild("MainContainer")
+                    local spinnerContainer = mainContainer and mainContainer:FindFirstChild("SpinnerContainer")
+                    local loadingText = mainContainer and mainContainer:FindFirstChild("LoadingText")
+                    local hintText = mainContainer and mainContainer:FindFirstChild("HintText")
+                    
+                    if spinnerContainer then
+                        TweenService:Create(
+                            spinnerContainer,
+                            TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                            {Rotation = 0}
+                        ):Play()
+                        
+                        for _, child in ipairs(spinnerContainer:GetChildren()) do
+                            if child:IsA("Frame") then
+                                TweenService:Create(
+                                    child,
+                                    TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                                    {BackgroundTransparency = 1}
+                                ):Play()
+                                
+                                local stroke = child:FindFirstChildOfClass("UIStroke")
+                                if stroke then
+                                    TweenService:Create(
+                                        stroke,
+                                        TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                                        {Transparency = 1}
+                                    ):Play()
+                                end
+                            end
+                        end
+                        
+                        task.wait(0.25)
+                        
+                        local checkmarkContainer = Instance.new("Frame")
+                        checkmarkContainer.Name = "CheckmarkContainer"
+                        checkmarkContainer.BackgroundTransparency = 1
+                        checkmarkContainer.Size = UDim2.new(1, 0, 1, 0)
+                        checkmarkContainer.Position = UDim2.new(0, 0, 0, 0)
+                        checkmarkContainer.Parent = mainContainer
+                        
+                        local successCircle = Instance.new("Frame")
+                        successCircle.Name = "SuccessCircle"
+                        successCircle.BackgroundColor3 = Color3.fromRGB(34, 197, 94)
+                        successCircle.BackgroundTransparency = 1
+                        successCircle.Size = UDim2.new(0, 80, 0, 80)
+                        successCircle.Position = UDim2.new(0.5, 0, 0, 20)
+                        successCircle.AnchorPoint = Vector2.new(0.5, 0)
+                        successCircle.Parent = checkmarkContainer
+                        
+                        local successCorner = Instance.new("UICorner")
+                        successCorner.CornerRadius = UDim.new(1, 0)
+                        successCorner.Parent = successCircle
+                        
+                        local glowRing = Instance.new("Frame")
+                        glowRing.Name = "GlowRing"
+                        glowRing.BackgroundTransparency = 1
+                        glowRing.Size = UDim2.new(1, 16, 1, 16)
+                        glowRing.Position = UDim2.new(0.5, 0, 0.5, 0)
+                        glowRing.AnchorPoint = Vector2.new(0.5, 0.5)
+                        glowRing.Parent = successCircle
+                        
+                        local glowStroke = Instance.new("UIStroke")
+                        glowStroke.Color = Color3.fromRGB(34, 197, 94)
+                        glowStroke.Thickness = 3
+                        glowStroke.Transparency = 1
+                        glowStroke.Parent = glowRing
+                        
+                        local glowCorner = Instance.new("UICorner")
+                        glowCorner.CornerRadius = UDim.new(1, 0)
+                        glowCorner.Parent = glowRing
+                        
+                        local checkmark = Instance.new("TextLabel")
+                        checkmark.Name = "Checkmark"
+                        checkmark.BackgroundTransparency = 1
+                        checkmark.Size = UDim2.new(1, 0, 1, 0)
+                        checkmark.Position = UDim2.new(0, 0, 0, -4)
+                        checkmark.Font = Enum.Font.GothamBold
+                        checkmark.Text = "✓"
+                        checkmark.TextColor3 = Color3.fromRGB(255, 255, 255)
+                        checkmark.TextSize = 0
+                        checkmark.TextTransparency = 1
+                        checkmark.Parent = successCircle
+                        
+                        TweenService:Create(
+                            successCircle,
+                            TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+                            {BackgroundTransparency = 0.15, Size = UDim2.new(0, 90, 0, 90)}
+                        ):Play()
+                        
+                        task.wait(0.1)
+                        TweenService:Create(
+                            glowStroke,
+                            TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                            {Transparency = 0.3}
+                        ):Play()
+                        
+                        TweenService:Create(
+                            glowRing,
+                            TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                            {Size = UDim2.new(1, 24, 1, 24)}
+                        ):Play()
+                        
+                        task.wait(0.15)
+                        TweenService:Create(
+                            checkmark,
+                            TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+                            {TextSize = 52, TextTransparency = 0}
+                        ):Play()
+                        
+                        task.wait(0.3)
+                        TweenService:Create(
+                            successCircle,
+                            TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut, -1, true),
+                            {Size = UDim2.new(0, 92, 0, 92)}
+                        ):Play()
+                    end
+                    
+                    if loadingText then
+                        task.wait(0.1)
+                        loadingText.Text = message or "Verified!"
+                        loadingText.TextColor3 = Color3.fromRGB(34, 197, 94)
+                        
+                        TweenService:Create(
+                            loadingText,
+                            TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                            {TextSize = 18}
+                        ):Play()
+                    end
+                    
+                    if hintText then
+                        hintText.Text = "Starting script"
+                        hintText.TextColor3 = Color3.fromRGB(34, 197, 94)
+                    end
+                end
+                
+                task.wait(0.8)
+            end
+            
+            self.updateStatus = function(self, message, color, duration)
+                local statusText = self.elements.statusText
+                local statusBar = self.elements.statusBar
+                
+                if statusText then
+                    statusText.Text = message
+                    statusText.TextColor3 = color or Colors.textSecondary
+                    statusText.Visible = true
+                    
+                    if statusBar then
+                        TweenService:Create(statusBar, TweenInfo.new(0.2), {
+                            BackgroundColor3 = color or Colors.border,
+                            Size = UDim2.new(1, -40, 0, 3)
+                        }):Play()
+                    end
+                    
+                    if duration and duration > 0 then
+                        task.delay(duration, function()
+                            if statusText and statusText.Text == message then
+                                statusText.Visible = false
+                                if statusBar then
+                                    TweenService:Create(statusBar, TweenInfo.new(0.2), {
+                                        BackgroundColor3 = Colors.border,
+                                        Size = UDim2.new(1, -40, 0, 2)
+                                    }):Play()
+                                end
+                            end
+                        end)
+                    end
+                end
+            end
+            
+            self.setButtonLoading = function(self, button, text, loading)
+                if loading then
+                    local buttonText = button:FindFirstChild("ButtonText")
+                    if buttonText then
+                        buttonText.Text = text
+                    end
+                    button.Interactable = false
+                    
+                    local spinner = button:FindFirstChild("LoadingSpinner")
+                    if not spinner then
+                        spinner = Instance.new("Frame")
+                        spinner.Name = "LoadingSpinner"
+                        spinner.Size = UDim2.new(0, 14, 0, 14)
+                        spinner.Position = UDim2.new(0, 12, 0.5, -7)
+                        spinner.BackgroundColor3 = Colors.textPrimary
+                        spinner.BackgroundTransparency = 0.7
+                        spinner.BorderSizePixel = 0
+                        spinner.Parent = button
+                        
+                        local spinnerCorner = Instance.new("UICorner")
+                        spinnerCorner.CornerRadius = UDim.new(1, 0)
+                        spinnerCorner.Parent = spinner
+                        
+                        TweenService:Create(spinner, 
+                            TweenInfo.new(1, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), 
+                            {Rotation = 360}
+                        ):Play()
+                    end
+                else
+                    local buttonText = button:FindFirstChild("ButtonText")
+                    if buttonText then
+                        buttonText.Text = text
+                    end
+                    button.Interactable = true
+                    
+                    local spinner = button:FindFirstChild("LoadingSpinner")
+                    if spinner then spinner:Destroy() end
+                end
+            end
+            
+            self.shakeInput = function(self)
+                local frame = self.elements.inputFrame
+                if not frame then return end
+                
+                local orig = frame.Position
+                
+                for i = 1, 3 do
+                    TweenService:Create(frame, TweenInfo.new(0.05), {
+                        Position = UDim2.new(orig.X.Scale, orig.X.Offset - 8, orig.Y.Scale, orig.Y.Offset)
+                    }):Play()
+                    task.wait(0.05)
+                    TweenService:Create(frame, TweenInfo.new(0.05), {
+                        Position = UDim2.new(orig.X.Scale, orig.X.Offset + 8, orig.Y.Scale, orig.Y.Offset)
+                    }):Play()
+                    task.wait(0.05)
+                end
+                
+                frame.Position = orig
+            end
+            
+            self.animateSuccess = function(self)
+                local iconFrame = self.elements.iconFrame
+                if iconFrame then
+                    TweenService:Create(iconFrame, TweenInfo.new(0.2, Enum.EasingStyle.Back), {
+                        Size = UDim2.new(0, 62, 0, 62),
+                        Position = UDim2.new(0.5, -31, 0, -5)
+                    }):Play()
+                    
+                    task.wait(0.2)
+                    
+                    TweenService:Create(iconFrame, TweenInfo.new(0.2), {
+                        Size = UDim2.new(0, 52, 0, 52),
+                        Position = UDim2.new(0.5, -26, 0, 0)
+                    }):Play()
+                end
+            end
+            
+            self.close = function(self)
+                if not self.gui then return end
+                getgenv().UI_CLOSED = true
+                local container = self.elements.container
+                local backdrop = self.elements.backdrop
+                local blur = Lighting:FindFirstChild("JunkieUIBlur")
+                
+                TweenService:Create(container, TweenInfo.new(0.2), {
+                    BackgroundTransparency = 1
+                }):Play()
+                
+                TweenService:Create(backdrop, TweenInfo.new(0.2), {
+                    BackgroundTransparency = 1
+                }):Play()
+                
+                task.wait(0.2)
+                
+                if blur then blur:Destroy() end
+                self.gui:Destroy()
+                self.gui = nil
+            end
+            
+            self.setLoadingState = function(self, isLoading, message)
+                if not self.elements then return end
+                
+                local container = self.elements.container
+                local inputFrame = self.elements.inputFrame
+                local verifyButton = self.elements.verifyButton
+                local getLinkButton = self.elements.getLinkButton
+                local iconFrame = self.elements.iconFrame
+                local title = self.elements.title
+                local subtitle = self.elements.subtitle
+                local statusLabel = self.elements.statusLabel
+                
+                if isLoading then
+                    if inputFrame then inputFrame.Visible = false end
+                    if verifyButton then verifyButton.Visible = false end
+                    if getLinkButton then getLinkButton.Visible = false end
+                    if iconFrame then iconFrame.Visible = false end
+                    if title then title.Visible = false end
+                    if subtitle then subtitle.Visible = false end
+                    if statusLabel then statusLabel.Visible = false end
+                    
+                    local loadingOverlay = container:FindFirstChild("LoadingOverlay")
+                    if not loadingOverlay then
+                        loadingOverlay = Instance.new("Frame")
+                        loadingOverlay.Name = "LoadingOverlay"
+                        loadingOverlay.BackgroundTransparency = 1
+                        loadingOverlay.Size = UDim2.new(1, 0, 1, 0)
+                        loadingOverlay.Position = UDim2.new(0, 0, 0, 0)
+                        loadingOverlay.ZIndex = 100
+                        loadingOverlay.Parent = container
+                        
+                        local mainContainer = Instance.new("CanvasGroup")
+                        mainContainer.Name = "MainContainer"
+                        mainContainer.BackgroundTransparency = 1
+                        mainContainer.AnchorPoint = Vector2.new(0.5, 0.5)
+                        mainContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
+                        mainContainer.Size = UDim2.new(0, 280, 0, 200)
+                        mainContainer.Parent = loadingOverlay
+                        
+                        local spinnerContainer = Instance.new("Frame")
+                        spinnerContainer.Name = "SpinnerContainer"
+                        spinnerContainer.BackgroundTransparency = 1
+                        spinnerContainer.AnchorPoint = Vector2.new(0.5, 0)
+                        spinnerContainer.Position = UDim2.new(0.5, 0, 0, 20)
+                        spinnerContainer.Size = UDim2.new(0, 80, 0, 80)
+                        spinnerContainer.Parent = mainContainer
+                        
+                        local bgCircle = Instance.new("Frame")
+                        bgCircle.Name = "BgCircle"
+                        bgCircle.BackgroundTransparency = 1
+                        bgCircle.Size = UDim2.new(1, 0, 1, 0)
+                        bgCircle.ZIndex = 2
+                        bgCircle.Parent = spinnerContainer
+                        
+                        local bgStroke = Instance.new("UIStroke")
+                        bgStroke.Color = Colors.accent
+                        bgStroke.Thickness = 4
+                        bgStroke.Transparency = 0.85
+                        bgStroke.Parent = bgCircle
+                        
+                        local bgCorner = Instance.new("UICorner")
+                        bgCorner.CornerRadius = UDim.new(1, 0)
+                        bgCorner.Parent = bgCircle
+                        
+                        local arcCircle = Instance.new("Frame")
+                        arcCircle.Name = "ArcCircle"
+                        arcCircle.BackgroundTransparency = 1
+                        arcCircle.Size = UDim2.new(1, 0, 1, 0)
+                        arcCircle.ZIndex = 3
+                        arcCircle.Parent = spinnerContainer
+                        
+                        local arcStroke = Instance.new("UIStroke")
+                        arcStroke.Color = Colors.accent
+                        arcStroke.Thickness = 4
+                        arcStroke.Transparency = 0
+                        arcStroke.Parent = arcCircle
+                        
+                        local arcCorner = Instance.new("UICorner")
+                        arcCorner.CornerRadius = UDim.new(1, 0)
+                        arcCorner.Parent = arcCircle
+                        
+                        local arcGradient = Instance.new("UIGradient")
+                        arcGradient.Transparency = NumberSequence.new({
+                            NumberSequenceKeypoint.new(0, 0),
+                            NumberSequenceKeypoint.new(0.4, 0),
+                            NumberSequenceKeypoint.new(0.7, 0.3),
+                            NumberSequenceKeypoint.new(0.85, 0.7),
+                            NumberSequenceKeypoint.new(1, 1)
+                        })
+                        arcGradient.Rotation = 0
+                        arcGradient.Parent = arcStroke
+                        
+                        local spinTween = TweenService:Create(
+                            spinnerContainer,
+                            TweenInfo.new(1, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
+                            {Rotation = 360}
+                        )
+                        spinTween:Play()
+                        
+                        task.spawn(function()
+                            while loadingOverlay and loadingOverlay.Parent do
+                                arcGradient.Rotation = (arcGradient.Rotation + 8) % 360
+                                task.wait(0.03)
+                            end
+                        end)
+                        
+                        local loadingText = Instance.new("TextLabel")
+                        loadingText.Name = "LoadingText"
+                        loadingText.BackgroundTransparency = 1
+                        loadingText.AnchorPoint = Vector2.new(0.5, 0)
+                        loadingText.Position = UDim2.new(0.5, 0, 0, 130)
+                        loadingText.Size = UDim2.new(1, 0, 0, 25)
+                        loadingText.Font = Enum.Font.GothamBold
+                        loadingText.Text = message or "Loading information"
+                        loadingText.TextColor3 = Colors.textPrimary
+                        loadingText.TextSize = 16
+                        loadingText.Parent = mainContainer
+                        
+                        local hintText = Instance.new("TextLabel")
+                        hintText.Name = "HintText"
+                        hintText.BackgroundTransparency = 1
+                        hintText.AnchorPoint = Vector2.new(0.5, 0)
+                        hintText.Position = UDim2.new(0.5, 0, 0, 160)
+                        hintText.Size = UDim2.new(1, 0, 0, 20)
+                        hintText.Font = Enum.Font.Gotham
+                        hintText.Text = "Please wait a moment"
+                        hintText.TextColor3 = Colors.textSecondary
+                        hintText.TextSize = 12
+                        hintText.TextTransparency = 0.3
+                        hintText.Parent = mainContainer
+                        
+                        local textPulseTween = TweenService:Create(
+                            hintText,
+                            TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut, -1, true),
+                            {TextTransparency = 0.6}
+                        )
+                        textPulseTween:Play()
+                        
+                        task.spawn(function()
+                            local dots = 0
+                            while loadingOverlay and loadingOverlay.Parent do
+                                dots = (dots % 3) + 1
+                                if loadingText and loadingText.Parent then
+                                    loadingText.Text = (message or "Loading information") .. string.rep(".", dots)
+                                end
+                                task.wait(0.5)
+                            end
+                        end)
+                        
+                        mainContainer.GroupTransparency = 1
+                        TweenService:Create(
+                            mainContainer,
+                            TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                            {GroupTransparency = 0}
+                        ):Play()
+                    end
+                    
+                    loadingOverlay.Visible = true
+                else
+                    if inputFrame then inputFrame.Visible = true end
+                    if verifyButton then verifyButton.Visible = true end
+                    if getLinkButton then getLinkButton.Visible = true end
+                    if iconFrame then iconFrame.Visible = true end
+                    if title then title.Visible = true end
+                    if subtitle then subtitle.Visible = true end
+                    if statusLabel then 
+                        statusLabel.Visible = true
+                        statusLabel.Text = "Enter your key to continue"
+                        statusLabel.TextColor3 = Colors.textSecondary
+                    end
+                
+                    local loadingOverlay = container:FindFirstChild("LoadingOverlay")
+                    if loadingOverlay then
+                        loadingOverlay:Destroy()
+                    end
+                end
+            end
+            
+            setupAnimations()
+            animateEntrance()
+    
+            self.createToast = function(message, duration, toastType)
+                duration = duration or 3
+                toastType = toastType or "info" -- "info", "success", "loading"
+                
+                local toast = Instance.new("Frame")
+                toast.Name = "Toast"
+                toast.Size = UDim2.new(0, 0, 0, 50)
+                toast.Position = UDim2.new(1, -20, 1, -20)
+                toast.AnchorPoint = Vector2.new(1, 1)
+                toast.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+                toast.BorderSizePixel = 0
+                toast.ZIndex = 10000
+                toast.Parent = self.gui
+                
+                local corner = Instance.new("UICorner")
+                corner.CornerRadius = UDim.new(0, 10)
+                corner.Parent = toast
+                
+                local shadow = Instance.new("ImageLabel")
+                shadow.Name = "Shadow"
+                shadow.BackgroundTransparency = 1
+                shadow.Position = UDim2.new(0.5, 0, 0.5, 0)
+                shadow.Size = UDim2.new(1, 30, 1, 30)
+                shadow.AnchorPoint = Vector2.new(0.5, 0.5)
+                shadow.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+                shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+                shadow.ImageTransparency = 0.7
+                shadow.ScaleType = Enum.ScaleType.Slice
+                shadow.SliceCenter = Rect.new(10, 10, 10, 10)
+                shadow.ZIndex = toast.ZIndex - 1
+                shadow.Parent = toast
+                
+                local icon = Instance.new("TextLabel")
+                icon.Name = "Icon"
+                icon.Size = UDim2.new(0, 40, 1, 0)
+                icon.Position = UDim2.new(0, 0, 0, 0)
+                icon.BackgroundTransparency = 1
+                icon.Font = Enum.Font.SourceSansBold
+                icon.TextSize = 20
+                icon.TextColor3 = Color3.fromRGB(255, 255, 255)
+                icon.ZIndex = toast.ZIndex + 1
+                
+                if toastType == "loading" then
+                    icon.Text = "⏳"
+                elseif toastType == "success" then
+                    icon.Text = "✓"
+                    icon.TextColor3 = Color3.fromRGB(76, 175, 80)
+                else
+                    icon.Text = "ℹ️"
+                    icon.TextColor3 = Color3.fromRGB(66, 165, 245)
+                end
+                icon.Parent = toast
+                
+                local text = Instance.new("TextLabel")
+                text.Name = "Text"
+                text.Size = UDim2.new(1, -50, 1, 0)
+                text.Position = UDim2.new(0, 40, 0, 0)
+                text.BackgroundTransparency = 1
+                text.Font = Enum.Font.GothamMedium
+                text.TextSize = 14
+                text.TextColor3 = Color3.fromRGB(230, 230, 230)
+                text.Text = message
+                text.TextXAlignment = Enum.TextXAlignment.Left
+                text.TextYAlignment = Enum.TextYAlignment.Center
+                text.TextTruncate = Enum.TextTruncate.AtEnd
+                text.ZIndex = toast.ZIndex + 1
+                text.Parent = toast
+                
+                local textService = game:GetService("TextService")
+                local textBounds = textService:GetTextSize(
+                    message,
+                    text.TextSize,
+                    text.Font,
+                    Vector2.new(300, 50)
+                )
+                local targetWidth = math.min(math.max(textBounds.X + 60, 200), 350)
+                
+                local slideTween = TweenService:Create(
+                    toast,
+                    TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+                    {
+                        Size = UDim2.new(0, targetWidth, 0, 50),
+                        Position = UDim2.new(1, -20, 1, -20)
+                    }
+                )
+                slideTween:Play()
+                
+                if toastType == "loading" then
+                    task.spawn(function()
+                        local rotation = 0
+                        while toast and toast.Parent do
+                            rotation = (rotation + 10) % 360
+                            local spinChars = {"⏳", "⌛"}
+                            icon.Text = spinChars[(math.floor(rotation / 180) % 2) + 1]
+                            task.wait(0.1)
+                        end
+                    end)
+                end
+                
+                if toastType ~= "loading" then
+                    task.delay(duration, function()
+                        if toast and toast.Parent then
+
+                            local fadeOut = TweenService:Create(
+                                toast,
+                                TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+                                {
+                                    Position = UDim2.new(1, 20, 1, -20),
+                                    BackgroundTransparency = 1
+                                }
+                            )
+                            
+                            TweenService:Create(icon, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+                            TweenService:Create(text, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+                            TweenService:Create(shadow, TweenInfo.new(0.3), {ImageTransparency = 1}):Play()
+                            
+                            fadeOut:Play()
+                            fadeOut.Completed:Connect(function()
+                                toast:Destroy()
+                            end)
+                        end
+                    end)
+                end
+                
+                return toast
+            end
+            
+            return self.gui
+        end
+        end 
+    end 
+    
+    local UI = {}
+    UI.__index = UI
+    
+    function UI.new(options)
+        local self = setmetatable({}, UI)
+        
+        self.options = options or {}
+        self.title = self.options.title or "Key Verification System"
+        self.subtitle = self.options.subtitle or "Powered by Junkie Development"
+        self.description = self.options.description or "Please complete the key verification to continue"
+        
+        self.lastRequestTime = 0
+        self.requestCooldown = 15
+        self.maxAttempts = 5
+        self.currentAttempts = 0
+        
+        self.player = Players.LocalPlayer
+        self.gui = nil
+        self.hwid = game:GetService("RbxAnalyticsService"):GetClientId()
+        
+        self._connections = {}
+        
+        return self
+    end
+    
+    UI.createUI = function(self)
+        local UIFactory = loadUIFactory()
+        
+        if UIFactory then
+            local uiBuilder = UIFactory(Colors, Players, TweenService, UserInputService, Lighting)
+            if uiBuilder then
+                uiBuilder(self)
+            else
+                error("UI builder initialization failed")
+                return
+            end
+        else
+            error("Failed to load UI factory")
+            return
+        end
+        
+        if self.elements and self.elements.closeButton then
+            table.insert(self._connections, self.elements.closeButton.MouseButton1Click:Connect(function()
+                self:close()
+            end))
+        end
+        
+        if self.elements and self.elements.getLinkButton then
+            table.insert(self._connections, self.elements.getLinkButton.MouseButton1Click:Connect(function()
+                self:handleGetLink()
+            end))
+        end
+        
+        if self.elements and self.elements.verifyButton then
+            table.insert(self._connections, self.elements.verifyButton.MouseButton1Click:Connect(function()
+                self:handleVerifyKey()
+            end))
+        end
+        
+        if self.elements and self.elements.keyInput then
+            table.insert(self._connections, self.elements.keyInput.FocusLost:Connect(function(enterPressed)
+                if enterPressed then
+                    self:handleVerifyKey()
+                end
+            end))
+        end
+        
+        return self.gui
+    end
+    
+    function UI:close()
+        getgenv().UI_CLOSED = true
+        for _, conn in ipairs(self._connections or {}) do
+            pcall(function() conn:Disconnect() end)
+        end
+        self._connections = {}
+        if self.gui then self.gui:Destroy() end
+        return getgenv().SCRIPT_KEY
+    end
+    
+    function UI:handleGetLink()
+        local secureGetKeyLink = Junkie.get_key_link()
+        if not secureGetKeyLink then
+            self:updateStatus("System not initialized", Colors.error, 3)
+            return
+        end
+        local link = secureGetKeyLink
+        
+        if link then
+            if setclipboard then
+                setclipboard(link)
+                self:updateStatus("Link copied to clipboard!", Colors.success, 3)
+            else
+                self:updateStatus("Get link: " .. link, Colors.primary, 10)
+            end
+        else
+            self:updateStatus("Failed to get link", Colors.error, 3)
+        end
+    end
+    
+    function UI:handleVerifyKey()
+        local key = self.elements.keyInput.Text:gsub("%s+", "")
+        
+        if key == "" then
+            self:updateStatus("Please enter a key", Colors.error, 3)
+            self:shakeInput()
+            return
+        end
+        
+        if self.setButtonLoading then
+            self:setButtonLoading(self.elements.verifyButton, "Verifying", true)
+        end
+        self:updateStatus("Verifying...", Colors.primary, 0)
+        
+        if self.elements.keyInput.Interactable ~= nil then
+            self.elements.keyInput.Interactable = false
+        end
+        
+        local result = Junkie.check_key(key)
+        
+        if result and result.valid then
+            saveVerifiedKey(key)
+            self:updateStatus("Key verified!", Colors.success, 0)
+            if self.animateSuccess then self:animateSuccess() end
+            
+            task.wait(1.5)
+            getgenv().SCRIPT_KEY = key
+            self:close()
+            return 
+        else
+            self:updateStatus("Invalid key", Colors.error, 3)
+            if self.shakeInput then self:shakeInput() end
+            
+            if self.setButtonLoading then
+                self:setButtonLoading(self.elements.verifyButton, "Verify Key", false)
+            end
+            if self.elements.keyInput.Interactable ~= nil then
+                self.elements.keyInput.Interactable = true
+            end
+        
+        end
+    end
+
+    local ui = UI.new(options)
+    ui:createUI()
+
+    if ui.setLoadingState then
+        ui:setLoadingState(true, "Checking verification...")
+    end
+
+    local savedKey = loadVerifiedKey()
+    local keyToCheck = savedKey
+    if not keyToCheck then
+        keyToCheck = getgenv().SCRIPT_KEY
+    end
+    
+    local result = Junkie.check_key(keyToCheck)
+    if result and result.valid then
+        if result.message == "KEYLESS" then
+            if ui.showSuccess then
+                ui:showSuccess("Keyless Mode ✓")
+            end
+            getgenv().SCRIPT_KEY = "KEYLESS"
+            if ui.close then ui:close() end
+            return
+        end
+        
+        if result.message == "KEY_VALID" then
+            if not savedKey and keyToCheck then
+                saveVerifiedKey(keyToCheck)
+            end
+            
+            if ui.showSuccess then
+                local successMsg = savedKey and "Saved Key Verified ✓" or "Key Verified ✓"
+                ui:showSuccess(successMsg)
+            end
+            getgenv().SCRIPT_KEY = keyToCheck
+            if ui.close then ui:close() end
+            return
+        end
+        
+        if savedKey and not result.key_valid then
+            clearSavedKey()
+        end
+        
+    end
+    
+    if ui.setLoadingState then
+        ui:setLoadingState(false)
+    end
+
+    while not getgenv().UI_CLOSED do
+        task.wait(0.1)
+    end
+    return getgenv().SCRIPT_KEY
+end)()
+
+-- This file was protected using Luraph Obfuscator v14.5.2 [https://lura.ph/]
+
+
+return(function()local g,U,i,n,r,o,q,s,E,G,A,V,k,e=string.byte,string.sub,string.char,string.gsub,string.rep,setmetatable,pcall,type,tostring,assert,loadstring,unpack,string.pack,{};for a=0,255 do e[a]=i(a);end;local e=5;do local a={2704,{0x1B,0x4C,0x75,0x61,0x50},E(A)};for H,N in next,a do local a={q(A,H%2==0 and i(V(N))or N,nil,nil)};if a[1]and q(a[2])~=not a[3])then e=15.0;end;end;end;local a,H,N=(function(R)R=n(R,"z","!!!!!");return n(R,".....",o({},{__index=function(n,R)local I,P,T,F,X=g(R,1,5);local j=(X-33)+(F-33)*85+(T-33)*7225+(P-33)*614125+(I-33)*52200625;local I=k(">I4",j);n[R]=I;return I;end}));end)(U([==[LPH&!'(r5>9R;sGiO_4'WXc3I%.bECSgMb>';jp#!H)I"7R&\@/2a+"JP0qgFA&GZ*T#:q;*le9(mD*Oo?,0O+_k,L3t4j2"6cJ>*#UsqrXuKdJKVN%!hbpIiTB5-'UZ3V@PuP'iZe<&2mYJV&$Rjhbi3o+]$8Ap"'^`ha_5iCGJoJU*ul6E/7aE#tG>Veh9Z5g9j;["%N`K-%.JPVCgj=fDH0^XVWs=;I3F1770,(1Y>-U>+^0_4G$:B>.;RRZe*3H/TWm:=J4Ra]QJ^JG\:^2p[+b#O)+:[dIh3tTZ&=k1&Je7a/2#iXDrYj3:`V+L]L@qF5_u'GOBEhFc/?.01mI\-c712N4DVK?7^4d_![Xl@T56F%BFBrb.5(h6[6"s@51V<c#m]SP,M_W^72;UD*ePK92CDlgGF1SD#-4,W\2F.E3H]n4Z>c&=X!M=@P\5+55.hN5EJ(X,-?*D\7e4YPEnid2GV!#V.?8Q0YcK#>pJs+/6dD)02)r1R=[YfKX2B4BmU!8[`d.dTVFi^j5QdU^uX+INs-n6/!Aiq(oS%,\ZW0`MN7aTk^ZW`:*.l'U""o@H7;\6>FJN#GOoWEXjsL&W^qtq"0pMp2*)5-C<m(R",p[/*Lp]<)i]GRV22Lj7#&)O+=qY/]i','Zc@"g'*$m>-HYl9cSSB:r6j\r-([k;gd+d3cV0?u.7VW=D);0A_pasreAi67@@i5@j;JB=^L$%7)q)GM2foVupFDRbdl\k="sGU='qq4dAot]/)+sgb-r@MI>+;JlJ=.T:jWN,!"_qD1PoMhm0Zb$!,.VqsC\^M6*U(6Z$lN.[';;"(_"m-+'a9hsOU[-LB6qq(@V(O&YtFqt)XBGT,FE:t!WKT:i"pEq*G`c&_^OSN@*6hU:Ju?Sf`f.k[mXIB?^[<*Zq>;!N`c@be'hDbK^]t%h&:c=kB7&(I['9%_J>]3$37$?<Sp-XE1Q1B$d%O0S=V$(;sM?S9$Cl45ZaeX([nl9h5!R;?mdAKQsUC^2Q?fE,[OpU\6m!lW9`)4c7I1:m/gtklti\u+.!Z42]^N@R_S#p1X.BagB(/qRYMu<gthu;BY5=H&l$Ar'fD"(q7/.R28'!_ULV7k$#%3^`*8.%1:[$6$=QWJ/";qRiGNXg^?cO<7&]di%&m9(J/:*1l.n*F`;)i"5p4)YL!;>0#*L7i6c.Fe)B#R1%.XNY2a^j>?d8fk5'(qE/)h?cKpAkqn(k8;e`#ka/t:`8a9U=3%)MHH;\Y#Xpi;mbMGM"_Hr)=p)bkS^d-j_aQ&^)6Ap$KTCu(8h9HkW_#b+Q>0Ji4CZCL&9^4pl4MgWFOD^8Yg41n+]l7\!LF.D[Z\rgc4<SedLB&3BG%D_Plkm2']R4QYF&ct=O-E@FJaqJ?8$1=sr,iGN,/BTZ+.?BPg'UZH-Fjh=E]AJ2j(PbI>^5;lrR+0!WSrLu85=EE[l2s$M1Iccd(s<s,">1@<)C2#&R"[p8h#W*o_Y=tq^IGoC=GN?ke1Y5'5f5ZC:D6G1ak8PKI:RE`4DqFmBXnCVV/86(9UFV7GX65I,C@[31Y/<,':/)k0>>0762;9BM#S^5\06hphe6*,nfDP06&mo+#&(m#]GL7<pH#%>L"@CeRYti[q^&</l^sgoXZ.%\nnQ1Rd4Z#qh^pma_7lb`2Yk]0YU`"i1!FH=pkOV@NoXJG`tFA&mnrLpS@q4slD-B:ITUJ7VK,Y>J!8G0ZG,-`5J(.&(&l!J;62lqNOa_lNOJ1k.dDMu#??b+T=DX!g8;>\Zt/7tG@Nn$CHk&bj1c>d@JNa=k,c(-!,r2DPT@4malSpb,;o,&5PZ6(<hZ*T$K9:,kX$I_@lQ+T/EG(CP56n6e5;a]Gkdfg$sD/_MkG!7#OTE=T.5[(i#GaBoOa.o>GZr"8l'U^C10j<Ner0S6'V3rFE4;3^lr=-Oin(od7\4+'L'n\U:;V1Lg>m9;nRY,]_2;A=8/5iLA#VSj2V+3<Q1*l,OM^c=aWN[0SCm\I/p5m\ODEP9TPL]n"\5:KT?`eebRKOjs)?lF"J'ge.VDPjg%$PG+EkS.@IMpelVM#9C[)q-TS<K.4N(i8QH2%PndRp='pZ^>TLo*jkpZnn_GC<cnEt5WY$F3Yi.>FB;Z?O[39NhFQNt?I?h?Np.JI%@8eaL5D>A++OD.h2q'Q6DfoKn(6$=?/j.s<FD>YXQ_-H]Vp=*)kW4JE$2r;6>X+m9kgpNl`:_m8Q@qe^:I3RC'<gX7BC8ACi:EQ>,FK-s#Ul#/F$lM)#T?nm:1O38VU/&pr#[&0b18A\'.CfLL`X/lGNJ&DH$2@[Ns%NUi*DiP%Eh>/G?Csh"f[(+'=tOMciS!r<(`;5k#g^K1\;)7k8VR8C)^^c4Ysd%bo`NX,]$6qf28F@oX%lRMD<c)Q8_9G1(2r**6[jJ=Cc+%JTXa!:s:X=`%aO]g*=RE<C(ncJp$O55j;R>>jM32&gD>GjOP9kB.!C@0q6(phR6DDrPt"'90$"#G@+OH-=!$7F)`&ono:KM4;"U/&.C;MCoA`6`WeOB.5<1NVB/j\Dgp&KfsV&LV7]mM<Ma`?"PiFcj\ms2,#7mHG3M@PT`Y1VElg[<W8H.(Gbl8C/'5hk]6IR<60V0aIa5b,<ruo)_Xa?F_!K^h%H-cm'hj9oFjcSdp8HP*#pi8@6YFcI8<mMalb9e]s&Ppua[uX_E2o`=eWh'8<nOBLL/44iP#Q!G:#IlE^9H=ea!2UC,CV'EU,<B/#ZKXPdr)YQFn`Y?MK"#/Te1\GVEP>ngp=qRl7LGO^@il\;<\Qq^Ah",4&YHcn<.@Q>[G/1fg]7Ui/f9Brh_KhMAJG"+dI^YkDNca-5_j"?f1bdWX3eXiqiYM>9FfO&A<rJh<=6KSH>*6VrS'FBNom^6<PJ$Z6$._]TbRu,Yt.FlLY*JHjY._\]Te'CP4B/=W7?>LN8Enn4SStUh9=Xs#i?<-r4\67BBQt^6Zl`T;uZVTEkK"#TCeV/*IXIf4LJ?#YoDpP%;Eoe,CVKY6fXJ\G/;6[+cKF&.P/;'J^Kijg#P*B><qML/RF&[bEg%;_CQ#'W""$c#,.r(V0E>klJ7qdQLi5m4!fQkLf'I[CU1nc4[?,jG8MY1-k4)Ngq*=pFT)[pN@2^Y^iB0Zekc+-b%.Y^p]+KMu%2N_olg'^8:==Zf2VYW<^X9^+)Dg92@:8Gh?rs.OF^>l^6'KbctsZJ&c`(r>kLs@^WZm6?%dQ6N.P]>HR]a>ePJWAmgcJ<Y9Y44?U?[R/+@MEd%E!"AZb*I)PG_X8L>_o,K,dliki\h"2G!&E6pU[qi_mQD#/-nBuXCFDo%]P^=T62G'Y^%na8*b+A=:lSIOEKmCG34hA/<HF7a#EGMj]M)]uf?@o.%\&[_q1T<llM:?Hsih`ojkk\@t-KP.-M3ZhF9*M'l%5:,.JO4gsSWQ=-II)[a6a@Gm25n]&CT/c3N34KMQUBDA2o8&fIj/cJO'GK[b9L)2gNnrj^j89K<UNt=ZJ4h,/4@5+"tWJ#cPUFJ+b@(UFgC[/p8,es'la!foE`/@;.c#I;dp?SX\-+pH9grNp2#6r)6"iLU.1!$`4<eNA0jR9RIuoT:R>SEQtT`7Cc.;YS\Wq+A,9<*1KR,.anhqW"]mK,<t#hu.FPB=^m'!bO$sVoZ<<e3^H_-Q)2X8nFjT)#`V+1=?aCOZlU4>da`*&H#8??J52E5.+!0HIF<#_(nSC7FRq"Tsd5'6ss+<B<#U`/G*cQ;nr(KNSI=c[RL<HiFRD=q.PY?u&qR+(EHJ[?/!C&6;!H'3#l@p(Z<C\^JhY#pcO`90t&mCaWs1h,kJ](Ucl:]A&$1R=eVGHhTmHBk2#V*;TdCn)iIr[;/X#*VP4+A_0DjK0c:p4!!jM-gG8aYSc*D!&"*X9#H;b+Sj=>qS!_@32RCFMVR#8*lhM+_oG/.&J%CDpjTToeKH/aMjP,O`51<b=/]T:D=Mg4C]-]%cL,VJg-LrNmlk<G]Y]6mI%2FZ'A0s!d_hfs0N@*P_ERVh2#7V$V=,KF$AKG85VYI6.r6!1th_d:+S:6p6R?G'rm]NZb+7cD61u4\1Wp6>#Dr*i!0`7E1Q4f8XC+Yma5@^X[JSo!L8]c_8qEh*[2n4V!'ENmNtl"SL?'C%1g+mG9WA6!(Q>S4ar'LJT)E\i&=25J`kWRb/Z0iS4\JL!PKhKXj8WoQ+u[MpEh(qRk\mWIrL1R30FDDff>IhA6;J.t8t:ZosN4dXg%A$-bN]d9U+hrH/IiSR[<$)D(^H@2a$_$hk*;&toL='A.dR+3[9]-!ITNi#nR&G[Ej5b5`m.F\j49^L*R,#Nn[jq8Od3k4n_Z)c/\^b:,_t?."T9H!1SFV='DTJ%K'gF)\Ena4nibG5sIZ]M7nu@<%9''r05Apn1SK//7fLE_f1,+]8fE[dQB]=BMlmZAdV:8&JpDajm]HW4`K%:pJjl>euZ2g$pFh%^m;uh\">Sq<6F%N<U7j$;bu^d:%Elo!IF3DI8COIFC6nL7HgdZ/7l=n(*%i@ms-`UNTA*7,IJ7==1\OM]5B8'KGu$l"&'$&:O,!_Ig/(#^Fp['6gacP9\[B'<"B.WggSLDLr)KXWPQ(q@Yh:Yj/uo0QY<2#JA:9kNP7Zp3!%;(9RZ4%t`Yu8'R;t])%boMK[Os$83ZKoj(3+o&o2"gINS&&jA\IP*t/-I6cQ^0e\lbc/^u2D%7fOI:#SPH%78R2s"EVM)o.D/N/J'+t7N2)$Gm#K^\Ybq`_*]Nc$s2H^"4toMMj&"6[bb.nDA"S)8l"T,)(!$cCq`Km`mW/2:C/krb$PX)T"p?pVRa6_4u.da+VG9ATC2"B-SZ7Tu6q7!U'Yq,Tf<\bWUT5WJ`hGjR9pM`!Z+IW(T-s'a`p_-TiOHtj\'P#fU/L^sT:6ND*I=8<-3CiN%.hP3c3`Qj?S=lP:);W^O4p,_$@M\Fdabf#j)Jh9m<=rE!f8W&/?Zgg04^:5(hnDQ1Q[Pa%-lD_ef&4QN%H<^f!_9RZ5K;O@l[DroV#nM7eZPCK.lAqlK5[qlCc6?`\*jRD*XNrrLUqXd>5%PC.AGVUR7u/DsDFR:7l\tT<k86CIHH/OW)S<pbd)]9+_.Gu1(#l2ZZY_.rn7YFghsR7u3]EER7&S]J6>4]i?B7BV,k0hgB")<S/ouCib)KqRgs6"dJ@m[@Qj+u_RcWR9MU_q:<'khf+h=11(qOXeg/]7HQI>\E`*JSXkl6:d9Vg^XKV5EpY*uVH31=Ea8P;hk@DGfkf/HmXoA["BAjtu#n9pafU6EuV'1"^<fS=s`W[5r2WE=Xb@I-8*hW-OBVdV9oVD@O,d".e9EcOH!/%"W^i+0)-Y&5LA*-72o"+0$;A'GBB&[ZT5-*k:j$r&Pt_(pW2>RfK!b+11.ntg"]bO--R\"K1V)X>YVBAZ3Js7?&b/VB]Imh2c#(nMuI0.uRRbDL*?i2oWOb-%Y&%tjqTmDMEa`EL#o1!7!'%hK(;ZWdK^Q-OcFek(+:]C&LhS-B6spLWr8l'dOr`T&hq-NhVlMpX&b/^3(@`bZK3$]*+N0jjuu=8J*p-,B=\lhc1&H0'ud5[@]j)QK[j695Tn@@h!F1l^8%M)at]$)==6)%]2!E2Ug[H(]cYUia`s1M#Pg8o;p^$q<4/5Q$I;NN2dTA>jP.4>3h+qhAfMBCSBZ"P*-Z[#D_`-VU_OgU?@#'K7[d2cC<)-mghW9/j?3gX#2HcI"g.'NI3s32"hEMh0R1D<"k;W4BcRTLF:,=(%a`*h0^(NbZ0V7sq9.%$J7A';+@.JkJWg@&%FA&TAtYS<6WobRTk8(N;!-C=`B+C\j&b(gB=cEB>O7UA"H.i_5j<C/=)j1_8"^:IaOaZ<i>ED2s._O/.A3L5f"lhm=^*Ub[m14U`C6fE'D^r,=HKU`4s$Kklb?V3."g%hJ?Y5l=,+s6lh#NG.DXhJPbO*in\S-BEq[:e\*,0??SiUU,e\%P=G3P_Y4DN:Tf=])hr?JH-%c>*Cd6;dO?fdJVshYQK&Rl1*.-J.>[rT$A(Tnc7CqTH9t#,VdZ65<%qn(7^k]]>Z'Il529F;)Rq9<\2W[9)!OLQ>u\fhG]!g[4ZbndeafS#?D`X-F624fYYG,?_d%[lIY82g3IjkPU=_Ps*Go`i0U?!LO0e^43AA3rgGHLNJnee`4E6`5Er\HS'KO!V=g&+,&H;r\Al`q*&#*Z,'t;0bYWT?k,qRb3O]\YOQ,*b5b`YJYU>18=&gQ14G@2Dl>-DB0Jl72Q`SKQ/#B7%W$&[T-W(frK^<a_'!IBZ3&tq?O8_]C+R)T?O$M_F03/?#OhIV.Q06R:-7#+.^P3o*nJ^gSBK%=C$^S-&I%oX/:Wj.m7Ool^>?bRH,0?jULXKb^#]PuIMUP(0(u#6"kRiDt&,m$j$S+u="J.W+dBQ*`\M(i^*\0dgo>F"@&sjFlYXM.d9@(3`^l='gDs)Hb1Of3i(nUPaC"o0=A-!6W.mM!TU^4Y;!m04ogki60s/;FPVG]%T+*.8O"S*#)-R&AfQiL=ISK:>&6&+01IQ&')X@;iW(*K>cK_8l9N')a0BMGd/l]FO#l0+>Oja-eMOs!6mK$*0"LZ';6VPnu(L@Z^V[9eSmYHa[RFO.%gE'Cch1*FnTo)[:V=LjL^Oip8O3BXl,h\Rih$bNh9P_VR#IPXKcI8TnQC7Rg82i8>S]8/Oo:mtRHYRl4GIasgtNmu3t,aW)12#IJ:@n)uoe>>+67NOtV:a1k"T+-;f6,mgKSOY:("j8hFS8f=Pa^"`hCU=Ifol39(*QcBGL8Q[_P(67Tnn/CuMMU%rc.-CF)eo-8Gm#3R$?\g*3/h,2KV9$46!MeFLJQ"g%6\T3@)Jr=Z*@QGq]Trij.^X9_%5mh)JgegfX+mGp%,k:?E#jPqd>D>TcWl*S%B>@cJra%mRN@b1b;o/^.m/js5p;E;1YdU0\dpc!h9&'+qTnTAnt?#L5V'>naq^,Fu-G>pJ34K-;kdBMn16U7r71?mL%*!A2g'#*u?%kPH!->CYAlBhIEYE:VC^;hoq4Q%4Na+ZlpSp:d@%Ob+!:GWFk-g0W`AB<uZc^KXF$&cFZ-Lob-Xjp)eHB#]EG&hprA%%T*iq`1!lK[/-9S&tf<,Xg>hW/=g%gTD9(LcUG]XSNoD0BE/6pA6#^`XcoU25jjVW1/'l_W6*DAURo[G;Na!"naA4c#;moKj-Ou`-UR<BE6PEmg@qR5Y'iXr)TKc=!;Y`fp<Eq)\Hm3d/8`P'2]Aksg*GmT^.PAK,7g?_<X$>TmqG;2d76<O(?2R_J)_S!9NAQCiB;@t=I_]98Y29taQj`ac!6(ZW`s\0(p1ePB\Z8\c>6Rn@%17'ae6=H%nX:^_d<8EHGg_HTs+]pWT!lA95kVK[$'p,c<C#`L=dYH':%8ZIiq2$0VLNe-DUFsPYkYsUDc_1l&Tj78U<"HEI7u127W@h&Q#/d-KTlj/Fp;-f/EUWD9sm5V*ZD\4NngT0!F.#^9#>W;I1I^oQVJ@Yq+sch,!(t<n.G7TLj."f<YP7+'j%0pMR4b)^oP<)o:X`)ROX4mG&L9E96fg<u33H]kj?;I#1l>)J-Lc)\Rl(26l_XU3Gp\N52=f"WH'U6s;fS5Q&Xi\f0VLfn-_Ub_NUaVq+5^h!?qFSA'Ao%X`UtR_j!d,V9E9:mTlL8V&kjCREE'=Eu[Oaq]>`kdiK[c,VaYM)gaO543drW^C@l6,buMS@s<f.["h`1T2fQ!p;#`ZiQtTguITYB*/WaJ449Lgjk52*5<(L/5&$E*iVck7ut%)FHh+qiRNo7AK`oGL@5I5=a1?[ZRX?#nuDB%Hr].uCF(j0L8b+iM@V>9Oa7ZHRF=EulS#91*3=KgGtL<Mgl]+:d/r7>;M3Uhoi!8@e$u2Ul`;R`dKL;7W*X^/#qK1lHCd>%#)sq0W!u+ACS?b'eZ`//]$a6<GDj>[_d9Kr(-^\@9U9;d-oHgP\\mrH%:n*b]'A&&HTZi=g\Qj[i&f`t4,h_?L3X6O9:6>Jp__.+<:D+7V,5;i!W$1%.sJ:p*q&VbODAPtic*$dXZX['/&;0u2.lnB_QXp1V0afs5j*j2].*o]S8n:i@.%_crIl`E((ssij,p#OSfWl'fEL!ppQuecn+0XZ*Q*$-%;q4M^6GE,rC(7l^H-5#%CY.HFIsb3$OdVt2%U%7UnE6M3@q=h]mZJ&Jeq'&1p^rtE1)3S/8:4;d:cNOK+J*K]f<Rd0X6>boV`[N-S#?.3fWR!"-S%F*`D$8>D*A+j%OOTdut2X<h@\baD`$+?#;3R.Kn20e%@*qW]TVCj`CIe%&DlOVC`MqS9!VI):p=t+>#SuC4Ea3TU>#9].sS4_l1d,4M9rbXQM.;nBJrh5#0;;K@bR)eCm>>3c'<-rC6+Z\09KaS1skkO%uS^TAT,MU:$5Y*B;?d\g$UQfh&%;P[_XJOKP+=q)PDlS%D54XcmDJde5;qYbaMSP*;[*C^*31V.J:H:M#!EB'.[TcD5I)g(2Zt7=W7r&\0`gF80,[Auj<Y>$'tg5d_O?0MC>iLe4gK"tl7HJEl[g2gAU),\u0<m&=3cLo`@W:@(YR^^)4Oqi`E`)[#8qhKr4.d#=E>K$i(%QT[;?6QZL'K7URgWDDBWgibf=6SBF)lu\eZjO(Tt>at?cDGi,PAWAVQ+Wt'*+qJgl@Wn_::K\Y)1PB:mM`nu)he/`([m%Y=$+)OQMLo%\?&&qOWk1%dcejkgV*CM`$C^3)NoG3,\\5T?@""O:Eg5+YoNdS<%hgL=;G.Zj/[^J"]bM'.4r-;C&PF\DR^ii;Y!tS,+?H8+W+5L=mb8&mb&YumDB_'n*!iB&c@$9mprMkM61K0^[79!e<a^fmq@964b/&Pt9tt3N+9,pN,j:bU9qP-R3j7!Qmd>8HZWMu,BG3=81`GODC<C&(^si:g"$-$W1Z\RN2j9GL]_+&uV2-.8?Xrd,Uj4_T/'D;iFE5aN/*O/^^,*#cOsI+i"o`TL/6a;74H+df'kT@SAr$2lPQLqWZ=Zuh(3m8`_h3X&qo'T1Va92MPi_Fp7*7V[MY-gL3$Y.E^abOl/[?=Te5&%'YoqN7i.3;IDaR!)'e:$jA@!hL3j80P!R&W;!!ZML9.3=<"Y&k]ZdcOS4A:a0(FY#h!eFLBW4ZR,_Fg3Y#_q396UPh^Bldp=qMLg<)oXqUFd8gWYTNs&[-&tO8=uST6aG:2Q"f4$0uV6=q;FFbDDqW6DWn-@/d/^P\(>=cmnho*0EOq-+`t/&^UpZL8s,4<3O",Do\!R4aMgi:Z(j.7p)FhF7'lk2B9OjO7\d:N[03eU-l+.d8Hd+M]i-)s<9C@P,(\i#'8QOr,X_o*N)Xr0%nmi9+Y3"h9*74T-osn@XnDMUG4L/ek`^L2pZF&5Abl#UCQfShF.7V9A!!I8+:.pZe6JV&.pVr*)">rB2P?M,M!NHcCDImXX/*.lpDL#V/\YhG>=*HY*H/t@4]LH?:^pefNs(",0^2%2r^cHRkQ\H?[*G/k*i]+rged1d02biJ5ijkrEq0l4;S>P3l^f6UoU-u]kB3_NMYpQK8j+PdUp>0jDj?5mUGWIXho$K!3t`A!3u=p[#t^[g,Uu3HU(.qtm]PaH!TZWSff4$p+n'-X,Lt9K;C0&Q-<*m0okM;I^\(f"\mQ_'V_onm)^$\0gAl9;gRj?ep+h>mG!U$N8q4f>dN/W]1$1Qc')l-b5M<?8/Zq3P?.p2kNV/#@k#%(XSC0'nh`^t:-2=5a:a;/*^`JjKWf3Bg`A__b#2js=+B9)f`a>g:(^aRgg0#Gpn1="X*a@28-0`[^AA6V]#Yf'_-#+t`Pf1VGYWXFcXGp[gn+aj:EC?7>]M]DHP/#!ijr9n4UHt"YL+&UN:",-!cMYIb0VTMt_K$L\>Y=KeUB3`<`1`%::=Q49Bt/a_R;?kk@ok[JSjZI)R&h]Bg0V,nb]D7*g,u]?!T)5E;nq+*O-./J>$"P:g,l7Ef[d/M5;<R7XB0ST0:O8>GlG+O66J8I>I]_Y^#5uYKIQ'(EZ>]M'UT"[kF/[V_ZpESnI5mjhY#[^X`.SI1%CAb/lK+<hL;\lb]6Ae(2!K_SHQfK+cK<"Y`42R_jh.&X72XLctNWZDDAhAVjshli6LD_K'915*+4l0MIrfFJ]A4@(>_F?,deBh+ta#:aL7>ZIDdkD*aVD:Uf'P^aGIU'KHUc$$F]eeeubO8X*q)HJ31KQ7W5hbABZ*hQr@W;l!0!DX*GD%(E&<=aV&@=QF,4ifoS)/qQfLVj`r=Zd4+9YfpBhml\qP)6eH;q_Z1$hKu*L:7ZRV:"8FBcq?'YGrObeE_@q"<A+0.^6E!MNQr>KFYOg7=knO#)!tn3TSkfIa3X[8(_,!Z)l9*FMFd3IuHL-B'1d"*[om:1@FlZ!pKSa,/<RqUb8l3:sr>9FQ')3eoSS7`=g&C1_8eIJu+EPQdipiBRD"2kqpRKL^m)V!"iB>\I<e/4n3VhU0`FJ4)H2?&pr5Y3`E[hjWb=mPARE%WaYCgb'^#)/K]*\#s6G;F4JWe`!%;!J^*G1fQR9WFqqe';Xr1H2X'WS53c+;3;9?fALWJ/rC(E1QU.Z09cE#!>=@a^$Oi4AWRY9U(_"(r5"Zl`b[:T;.s#hXdsRj,"94>YEn)dfFc^^A7\of\hPW[#)p;`0Rj*Qna,:inH1Y&(?F$RnM,1Vno`#pjok$ZnLU-W93BNH_rfYb`UQm)E[I(WuON+==,[g)ggBE)S6QkglFL"`-Tng]""b4j0]]Lu+N7po:dM*RGg9_j05c8qb!gW)nO]pZMbVS)?>0=)EL6!E(-+O>IX3RJ$g.Od`T\$-McnbQ4UuL>MOtXLUo#@c=D9b_35pWi1Y#QE*rK#&Oo:fHp1P$Q6[!C:>J31%(&C1%T1<&R*``#m>cPCMN$bomfBA(!0CPOlsF84/+HkL9j05DT,r'@2o:I6B2AY$S(3Llr@M"pP%Nqh,-B)kj/!_]$FuD=U$M0VV:Vdi+Y`#/M]Z5M)!fU?-!I-V[0(X`0.A8.pZ,17pt?41UFY^&<iP)$tg_^aKE+@Q(r?1o:cqj=m.B2eVt\+g-4OE*[XL>V.`[M`^JN-+r@ik!([dr!HP0q$_!+]g`JZjMa['X>Ye8=-b?#/#C+GN:aJGk.KV\S.K2PLhZgC,DQ"KV[:g%rB>T^/*`WhZ%KjJc.\DHKjS-n?ZNqkM+!F!bEGGcrDqnQN4tMJ]J@R*%7RUD/n]5q1U\iP&MLu68!$JNt=aT-;'P.mSTprS0aU?qaq)[+t$FpKDhJm(i)f<0mQ`2lPs-P)oo-RLFUMrc1`+@4BeElRar&Z40kf0oa<9+JZrKj'@T;cXrXDRD=2sj*D#;[\>M^)S)Wta2H1;Y4ICPcDNO5SK7dcB%tRrh+*/&:(Kn9lb[K<ZJ.f@Kq5?IlR*Q6#p[`Ka?$\i'3"S$\8@YJ]b#1=1)ZWdG.Ngh<*gNf"=_%jfW!Z'Nggd3TJa$mH7OB2945`,VQ^\[jNJ.7!JD;i!jj.L#pK_$VLpE]F624j0R7dWU>s9'rs_:ob&EV;4cYQFP`:FEVE5km;OLK\ZbPCAW>sW0%$ZS&\T>7<S@RpMm:n\L8j[&XJ!U0Qu+.Z"ngWpnNA*$ukdI+56e,LVLSVC)I[7,!WEMmr\aSP`_gFBr`S02DIRs*E^%GollB?TsJcKc`]HK'R=tW#=.M12,o'U@#s<"XePCZ1N178UkKJbX'!V&dkpsUEfW'G@odYb5n@I2qRY\loVaDog.U.(62\)l^LR+QG%9g`*9RVhOT7uTd<LGOW$_-*l6BF`_[?OjMqp6H<;?*]S4_+d6WZLW5!"s_DeJkU6N(^f@?P9jCg+'KhlF&)aQ6L%?b;58_W5t%5?<OBgP6,!]$WnA+5,'*^7h8.-RO^n<O)EW%aRuSj7j)A]#klZkNkM.=9a;'c<q.FGu3=e7(QCL@ls+COdnk;INPc=kkOg)0_h:3YU==f1!O^^Ei26K:mi&*W4)2+Q!hj&(tdL,i[qj0f/Zl4#,AGA5$cIL<ZM9a4_"dnE3Hpq=s,&3=Q-<YL^thEDEG:[:*`P.,p)k@K3^I#l37dfa0sk9e6`V\`"@lu>RPQ)nD+J7J#%jt(6o)dl9d90Qb+!rf'J]@XiILN,fXREM/NBpi,\L$FT44C6`<3Ao2rJ9!(BG%;\jDL?Zaf26dRSAqUs)pWI>Y;;j0OITc7rs(Wak;SHO,u>!Yd:H$.\W0`(,,q`p7t8o-<XJ9``>'C3%cm)D*8s%I%^/ubM9eHE?Gc,(JjI/W1NoR@G\l281<*M!2>j4Gp`>&t1(2bC1C5Un8OZ;1C>/j$sO0nfE&At&7e4-j%bU;Z>8Lg@f5+^Pj1>!aD6Xk`(<[-+*i$Lj8]>6B)''?"t<L;Q)66$e0?fQu5W.V`&o5nAgMiW47")^qkr!`*6IWRd+af[O\`h_0iKpW.l.WY[seV5l?(b`j^tX<YHJ3n*?R3=LV3/k5_A^U7XL"@.b<cc))3[5;@#'d5T':/g]th[tB`-_(0@M6>%`bdri<GfX6"1&&+rM6rAlJLQJ#OH[3r"KNl.h#L@/[/L%^#@o-IqNHe&cbU+ln]%3IB<Ggh;[$kQ@;#BOCI>o$q/-]',RtS`_(^11)F5hNj#X9ZpY<9Z]1.udWMr$$D0h+VV&EBEef\3&6Z[-#SYC.bp3sZeiTSa,R;DZ&.;o.)/8/aqG7GmLE0uKe1C3:R;&'=Wi<0QpgeX/%J"aW?3B!9BApoiNNE9o#Ti<XTJ>=@><p^d=>cmp?:\%a%&suB!2l&)t23#Ef<g@'*odB]q7sd5X!LE79%+8MKWoJB:nB,lOUprf^J0dKPZD.$!3Hh].Gukm&`pLMj%U.[#HL.+g^)?H[;!M"&HcsZ4n''KiE%+1Q8+oY1UT<\;^+>Mr+\^d"N[:/Z$_fV.5aG9ghU:&N&4V1I8&\A0bFQg+qthaYjS6G/0_q_Y12O]o*"DACUE0-8c2otMC>Ge>YMV8s(f2.b,L$\'==oPrpd2#%5*5]<Y,cpi@_oHd7OUb7eO:3DN*8/+"u0a!o-"<U6jUFb,m$.&]GR_DN!ST@9$B3DGVA#^:RH@a7*%(3K^q*"EXu:IpCk!fIbM%rZpLjGQ)]<&L7=mIU)T.W.=U=0bJf>oi&cXdg!Td/c@SZVK;S@;pV)k41Q9U+&6Pkr>Q.&J<0;-[jof6B7QthA9ZmA(:IL<@hptHY0]#9hVon9t#VUM`$%eYrrHq+?\91\ZLHYVQG7`+2ST/6>$B<Hk:..-RgJD.n/mSCLqnn6O7#[pDAjV-4UrDo?=/.4\"'A$e7+h>M:5Mas?9_UN]'`j9*/$EK?FGt==#CO`:)GuRO[`LR)0G&SoJ"bq9GhfGI#!L/lMr*Y'b4_W&a1%CL=n7=d>*=oUQ9r+!!IN5kOp9i4RTm_-jI2&DDN2dX3CME,j/6#2G,@lRQ-pWYl`PfVGk#"a>u_Rho#AI*<5HuXSnI4f`D;[f+t5?IS^pKKHgsL"]?9uj%pg`nuR^b'P&UNkRMS[Gf.CoToY<-#!.m<'gO^pH%BORHr=B[^m(uZYkj#!N=^LG.t=gF7gn-]n<M/fJW+\snZ\i^'L(V(#%Fe_ORn+he#W#aSImH1COZaiE5(Y//U<jAYNO!m@PVN:AS"JjFQRhRAIHaOK$)7Bi2O!#>"`#RJN)HI]YLLt([6#@rkRJeFqT",LlmM1n`UDQJ9O.0LE_nq0EpfYQY\K"\IDL'DX1e1lPB?SJ$c_-aQ"<jQ7V?H6qA^_m3<ne>c<VDc1^7/**UsGXrf:^W2WhuUN@5P3=AR.2teEMTUo5P-6A!`dV$";k7D\rAHI$ZC_N\*]d_ZbT\bDajiUM9nX1)QP;pXB1o-Lb8]Ah'[l:QR)j(Q0!9Uj-rUaP;.7]O#YeHH"q^kD6fEApn@3$^hI*n!."D@lFC,7]?c#=<"fV^Toc#ElLca4ghHaWVA4qdZ[03Jf"TXe51jDMmG;_L$P?\T:nl@9s.lP[Z4m%P!u"Uj:OB\jNI!?aVu!bTu)KT"C)!Z6kP67^d'KqRG8gS;2(p&4nAM($kLI$4fOQ%V%N-MH+h*Wl4W5uadTSEC)LZOUg7#fGRd371MhdM<6o*KJf2QUP0m3n6R_c8RZ;I7:HSDF7D!TFK9&T%@<gO'#5g_3Yi;H]jA8]hK<7q51c1b84fsRN0&hI?=9;aB^8Q3sXg"9gf?\,47/.d:DF2\*o)l^'#*s&EIa!HB*.TZg*:O?Jml$Wp,@t^?Di`gn-R:aD&'?;E\,Uc;>&_!9b93aDHeE$[,JC_7_/(Eb[aqR14)j1h?ERO2V#kB&R#J-VuZC7WY6f!+gB=Z*oYqm$V/:!\-U@!p)+JBU"tdgAJ!gRH&ZKK0E*U%qgX*Mjen(Y>+c;AgFmY-/jPZrm'ji`^5CCU2JO&_pc!^de9AZefTT-(\lLB4\dX*'jP>*T=^Ruhjn6An3pQul2]I$OQVCMqWj>$?ek8>?hqH8i3i_587>X\;$m%2kh#XOMXKbdou*/sEPT)+:&Y]8DU>Qk*/]&ELK9^8r-oSuqXYdBb!)%U'Nr<)Y&>[uXe>k"(d<m"]6A*BC\L3^20PBVmX&SfYF/;Tqb,\j,MW]8(YUR,$P;^UZ[!@-s+./hL>;V<na()i!I#4*K0.94/!.UH,!#c\6XoQG7sAHUMGf)od6QcqYiNlK8u,^17er-NP\D`e-;L75TOn!M'S&gOhJ):Or1?.uPf>*Djjui[&b%Mb<!#W4o.VmScNIFFkQf2%i!I[r3:+pTqO@G.rFsX_/Jr)IA+oGTgedug'dBe*H$M%(F^u!-ZD'@/r%ENsYE@g"^O=t0[`<H1hX&LBbQ0':Am_(N`OEk%;XbrXJ^kRGnKI9?j2&VoA!/l$=OK0tNU.arq2j6#%Is%1()l^%7`'Goq,e8T8gU0PdJ<Z!.I[3/.<gd%(<WNJLCfEJ*HEnhhAD$QTmk&Xnjc.dgBif]C@d2KcEH0G,;1LA)S-$al`cE$S=XT0;uHBFKKYDs[Ps@<-Ug!I+@(Wlq:8/D[3=&FR@[SN+0lblX:qg:k%6!Ki0cWF0s)2g3OVWCB+KOi8i#g@b)k#DoEIR#2sj\/mo@Rpm"7#!$"XH"Rss0aN(4eBoZDjt@_7f?VF$k;Q)Yb-9AH2Voegf,r:?^PY[(T@oE5<("TOFBnq8]Jh9:KW?kFm35]SA^>78DeqWGC=nGF1B2Um<7;ftVgg`)e$3B,SVp.?mW]B3-$,M"5?FiGD9oYKcB2]X7t..-FCk@=:"+3bMpTcoQ#?p%Km[F(@Pk?<6im>8\e-L_c0V<).h[bn+#rQ$4@oE;s@b_OY'%"0B(a7L?::0fMp,6bCO7:M&=,<Gl2T9F4tp!E!J#;-)k%4Vsbk>*a%3Nd@oE2ZW=nPZ_prN9J7FGID/_e+JmCRt5Wgrqp>1I5;Mb;(J?0.Ujf=%?D6`#TaP&ls\dJ1qC4b;>,LA==K*H3o@';qr[0UJH/C=Oj;I?[EdI`TEaFo,BWpBDM"8KZOs;q+=gaUuP4%>pHj'&EaXkq9mM;CQi]!B8/cV'lKW3RU=G),C\U'"3;(":Lg.0:]s-MJcsd<O&rUE+M'C`c9A1/Y'Y)2mimuf,+DFCJGleoJDb3=R!lY\8'l1q4p;eDe/sor=/rocGbK-$IO4<<*;cCEf,3)Aj`99N'RN+I;I65KhNkIqV^k8$S0cE6k'1Xi5W6(n/?T)Z",Ml9.3uoXi(>1#[+K=UN_JGU%<i-X^a#CE2g,=-$b^Omn2U$"I;U9m7L7M"ri^lcK:CQRn@VEl;Klec&?(:P\+7S$]Wf!e^-;H`p`f-Z8uWH(,<%G=&1es5/43)unamhpbhnO(C^.;Ps&9[*nBM<'bc8mP5tq&S\'AXJD8^Ib7\gn4;!rLG2]'cQFDF7_:f$3%iZ</)#PI#?Ot'0(oML?iT5`W16^qjhVk2+,bN<pZ6'W+@E%ENL2MB.WSg%eQQ--k*$0oUe5h[`X05P?C[><\!@e$VZWLVX8lR]#Y=<T\m*/VXh*431T,S:nL[I`5<$,bm?YNHi;'AJ-^q[WDRG<ISbI!_f_gRQR<T!F"(ffl]XSM,`%56tP#IaBMY5Wb!cKRJpj+_05l%-cPJY,Lp&OaqP>kCSrE>9i$*[RY=7J@>dC).PM1QmS'#jbgOTCuZ:@X,@\U?/@Y!4ZH7EZIt8?/A:)oZ&Pi4X1<,O"KOT0!:R5d3(UI4[EdY75T&be]DcEHKkUYNPl&MTP'VtN'^Ia]:K)VYg<PD'GgLE+C^n3c2<g8OGQ^YKp/WmKcP@Nm6';*E5cjkl'$D&_r'-m.,1Zm4dSIhCVkj`&)YI7]67AB-=LKl<nAC)@58nfkWT7P?>EP7i.(n2QWmjLD;pP>b,L!nt+&`_7^3)@\Z(_<E-Em8/?2Vqag?&L.Q[m=P_l,1Ol?l_g49M#4'27PW%PG*jj%#O)V0qcDO`bBI9eu)XrH3n,A@0I-8#)2V][lkWJ^;8c!`J&#He72U_-3XoLuMF45Jl7gKKc.r%MuD!"Xe^+6KlHpD-SZVUDe%;KiXt?rSr_/OPOm`?#rC*%+(.CG1F,;])l/m<3Tke*/<,+%ABHuJVCqrdT:GVLTZLk'uaCa%VoM_p<N'GIAL,q+9dhW4umMqa_klnU3N(/%QC@oQY]6o_CfM2]009\:\^]@b>9k4A04mM\D=?)J?@3.H'"l,EPQfr=$A4@/B3E;IS%RQfbec(1%m.S>01ESa_@E*iDW_bG^&W>STFRjU2-!YpoQGe"''Dl%EYbArr)s*i=BbSi<j73.;'R),a.7fC6U>*UoBCU3N:8KRd-!U\joH956RZ.mZXU@5+s4!iqu##ns*5D+^W__1RiV(h@*oBhPeE'5^60HCD3l&UHcaB:/,1tNBIUuP([c:<?HSKeFEF)je1k=qtB4"Vr/_$0\GlXAhc``D:dQr5H3/b.oF_LJbWPc/cqjrUke]3bb,k+'!!TUTf_3!FOr8#lCl:$DIpLpGIFViW@09jINu)*B.Wr?T/a/OfS;(Pc2p-B(==FCiC9[$57YK>/nYC/k6cZmU<$eRHSVNG#R=N&_Wi=e,RcBR^GLrI>1J=bYF8Alq8uOFeWo*ZNGGD'IMegVhT/'b>Xg_D+CHd5UjXH-TY,so$6XnSpfHQobmY,sN?+XG?HGI9`GW6(WAB'Wf1E-F_H)^oGH.gt_PQ&XYB"^KY#U);8S/R-D*C2ieAUs;Vkjfc4Ou0QBURI!P%c^K2(OKT&Hu^=H=63.B6i)?l;DQ>[Q/*@hF'_?BuYTc8$%hqHqa.=%TOiAL3&<D%$8rN7RiCSTpkH-]>/EiG"N$Z05Fd86;M1C5fG/%_n(Q)VjbP_*Dqc#MKE`h4\Ab4h=*XWm(FP2'b3IU8o0`E"7kX?!\=15r*`3YZlTkWb7Z6BeQY&:72DZA\(93o70W>c!#:i/"^;_GYBfU:`NX^4/8tHLAhitG"FDJ9^uCLp+O^-eLF8TUbOaRMH3-^5?pMXX1aICha)-\faTU$AAN[PNrAL&'P!/I$N4?5dl!e1#hM^_K+9gAmm@5'8ebP<[]8m(cd35PM/?L"9!i&S5''?pCbrcfhYV/`p?4S"$b]ot6Qhma3],RhtG(<_1NDYuS:iUPUm6rHD'3@C9a3-1XA'adVT[Si8$\/`:(P`kp1r^3G=h.)SSD]H7iePM:jt)53D35ol,H(`f\Bl,t#Ts^UgII2`<ErM^`T3u:LbM_`Y@8JU-C!</>rb;(4`.t6SSb/k8=96,1A3`od^)tSYY`I+aJ`HTM`CeZTEa?!Nb@Xa.D%&?\S(]_,i3I9V,&J&MTuV7O\fs"8AOu7X$`Qkks!`V:Q9F'.ToNI:upW\-@ufUAuX1I>69qFFauulVL4]WKf^#VAlZsI$IQ/q`AIe`&CDHd97a*C2ZC/H6Xt/_^\U%t1EXrB+?;XBR+d4U=k!!,$\Eb6\RDIAS&&V#gk)jRdA<W]#3otQ8i?i;Lr"HibjtI*KSM#mS7,/%/3sCPgUGqRXS]*/*[ZV;8!Uc6DRSpD\NFksI)0%npeq$4P>lnQmU"fC&PP4%PV1+MP3\WNKs[<!d%_[VmLfF.OmP8LqqF?oI[lRj9+A-M<p@+`U`;n+\I:,)0OE1P=3VdY;(g,u]PEF\NcU[;1tJLjArb6L)>_dGNZNk0P>lEU3chUp='"r&:EhkM-c!Z_J@STSb3i:K.+`JKiTZ%3HKZc7NV(FaiuC+[@&h1F!FMFeJY`oF(RdFGjQU:[XZ'!n;`mZ[a^_&EW`sKc6u(>f'>hGFZohQKLtO(>nMe%>Bm/`qjZ,gb-bas2E%RH9IrRt_$Adb3qJ+bWnaZ&5im9*m\bin"eo&fWBWfg(Rs:UZh4'qFE",f_-$IM7kc;N2DqOPfl?m\]M0t!nE1)F7=ia%sr^gt-IkPZISPZHp.S.NlV*\Os]ZFBk*F<&Y_P(D:(ad"uRa4CWRh[#/Q#JI;r=:hULb6SO3Wmmu&g*I=k@eu+;=lsq>U^"R)s<L2^L`!;h8\lk&qT"on]Q@_D7.YCQp7Q@^PSG6_]OH5Y)(&Mq/.@Oj,N]SDdAnFhQh-Q/l,cd?>lTi$MV"=?N2W\4G'.EcJ`[1T00F]efrZ0Gg.JuE7Y#5(9VIHX'oE2LF7\8X&%5Nc5Zol)$q$aK38YsWZU%@929mfDV<ni@7/mVlPM<lh;:<PFK$`R.X)FOi>l]4;d%k'gPNRa+0uWYk<cbrInGmuL^H([QBf5;:,juKqh@V[('n)!B6,)q+)]]<o)XdtgiBUU9JQi8q/gj*Q5K=,GZu1uY0Ogc$@'opfAB'Yp"G>#0bA$e4bO/K-sW'Nn_12je/BR)FqU:d^:RGGeZa]>_EE0h?QHc%Fgm)q:&?54;h.UL+,RF!2?0udg18DNTW^A'GV@,W/OKAJ4\t/RD=.rgb.E-nQsO3"!a+$:,P$f4&=BgTFkpHh@sKaVrL#S$qSQq=h2g"[6$FGC+!Y("Ssq!tD'F47Jh"]*a3s3#K2NS<oE^%%EkTC&QBA6$aMNIOkpVGW(k,?8in\R2XFCVh=m,NUmdPlJX.u1D&Tn-lS728S>Q-4d8VB(dlojGHWG3$Y,trbkR3%#(Pis9b>*AL"<R*N=8u4*ne'$tSQabGh$nm[,E\(-DG$kXRA.3\W.fp[^`0L+k<7'Hd[>#-\0HN#-pfp@*8NGQeVm&LnSt;2om^h8?2cJ+s@EL+%9s\02RX0@SiK:i"1![Z,)D_iGpG6].^!MPh#EX`Agge/,_rXoa2$]h)6pe`e1OU+ur3%2KS$DeI(!U*8(9<Z9Br%\L6^.2L&mi-G+Dd'?rAXr`kY,-R^ffu<TaU^^=MV[0^k>tG6*u8Mg!RK5@!Tqqm^8YWLhYGZ&Bi[.mS[kE$M.gr93U#`n>6#L*MtXTNL%:[9EuB\C*^mA0Y1TJ8%uZ&A98?CR$JJ&SVg"ukmAU.2a6>$QG\ocT,^9IM35H!X/,OHTBhCQK`*dKE#r36-fl*XJ0K_cROt;"d!$+4IC6<k_3m(H8<Eb>k!n%p"(Bs+^#D_,M<o%$"^)o4rHi?H_2_C2OTr-ifdd2Op7;t.M-HijidG#O]`2&-du,/C\`M92N*=^r<FQC<>m9[BT]Fj_4'4*eaX/MrZWmJ)"WaLWoTcfX+[n[!9:-e]@G.)aBiPg8VUl$r0*&fR%r6r+OC,:Q#!i071"!(-U5F,LRWcE.C(,@XCG2SqK`LR/*_uMC=*kFd'7j&?a.K-`Sqgl4:(4?'Nu+N5`[(Dg+7%Z,5OJ8hGo9<sEt$=-\(1i`EO&a"G>e$p[Fq]$":,.uk79(_MA,[,L"L7Y1bM8F"IRGO[pQL%S`%QtTh#5Wm:.GG."Nm3--%S,l1.;No2*;;c>Q:HeIQsG2i5U9'`S1r:T2PE.?>Y8q0DH@K"%A#j`(rE&>5#r(s,Q`J]fn<e"-5gk3Yl31@Bg9dh_i]\>N?)PgqR6Fh^r_S-(?YN!--e4C2H<oKf*'RsCl6)%Pm1'No]be]8l>B$_B9rn;Pla8<3\Z<Ol(WgMg11YPR%i(oT[U$BW^A!UhfHj7.5g=aHC^J;0gmu6a'0P`Y&*;E*NWM6N%pb2e0&m!6:XF_/p0=/]hmo()2AU+m1>!GnP.oLh2*P'CNs-g_?Oqrr&H;a;?H#HLN4EM",Ig?Ul+k&J]4s_XpCJXCp?e+ir8Cn?Q;>_Rs(e:1'_r>Mkb[Hf,j(BmMd'CfBUuFm%=D8&ooqj^c<8!P3CGnFEVLhVW++S#O[+JN>VGY2t%.T3u!6mjih"&C73nJ7Y@8eMPkT6Xf&Wj<XFjNpGJKVtfBR!TcHL'+#*/@^mENV)f$TYYQj3oC@hZWFnCQgS?n!H_e1p.;%bHV;&KE_,9j1pUh8Ynr[0CHRY/\]sAUAX4r#UZe)Ns]9i;9Nf&o#`LD%:G`A?4D]<IO+@]1CF`BL9J>Y*1OgC,M)kY2SM;b`uSY87pA<jV=)[%he=#mQROT<mQO:2J*UaPB%)Ag$01YF,B@oM#<:3F2_c&STboBZUK7Jc]Q;d/D(ufWjOs+<LkdVTJaG%3dpng'+1EmIb6,f3F&Y]>nQPsth!rt&-1NcuWj!pQ_dEr+!*7+D1a;.`oqN1NFI>p$;UJAN_9X%oKHZl`28\L]7()cVF<R2TcT&B^=E\jei`AYH0qX8;JZ7!1)4g#.W0lg*&GVFZJ."KJ$,:K9haYIm3W=QtS-)-_l;Oi0IUn"6.1G[<R[=kE0XMGQYW4-LTrVG$L5feR5P!,:1SL),s7jUn)OlC;S42cD:O>#>1o0VGHa\="-soM+nW,X#d;5+Alg?g.,FnGmdZ=^iVA'1oA[P+NKetS3Hf,N/@GG';%:L$/q"aGmf5J"@WUIb&5=WJ.*).KNa-#d;ZALfe3(=MBaQrtQ"+hF>"LE*OOkE#[\c<RPU`E%EEa^3R)U,r%ci`KU9j/#U`![YqX!>\YI)$/)19dM))N#3!3dd*aD=]jVVG,4?ic%5!
